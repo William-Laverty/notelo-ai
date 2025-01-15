@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // or "mysql" or "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Progress {
+  userId      String
+  contentId   String
+  completion  Float
+  quizScores  Json
+  lastAccessed DateTime
+  
+  @@id([userId, contentId])
+} 
