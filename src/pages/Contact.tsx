@@ -7,21 +7,21 @@ const contactMethods = [
     icon: Mail,
     title: 'Email',
     description: 'Drop us a line anytime',
-    contact: 'contact@notelo.com',
+    contact: 'dev@william-laverty.online',
     color: 'blue'
   },
   {
     icon: Phone,
     title: 'Phone',
-    description: 'Mon-Fri from 8am to 5pm',
-    contact: '+1 (555) 123-4567',
+    description: 'Call or leave a message',
+    contact: '+61 401 664 431',
     color: 'green'
   },
   {
     icon: MapPin,
     title: 'Office',
     description: 'Come say hello',
-    contact: '123 Innovation Street, Tech City, TC 12345',
+    contact: '26 Durville Crescent, Griffith, ACT 2603',
     color: 'purple'
   }
 ];

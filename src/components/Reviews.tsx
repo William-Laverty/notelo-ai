@@ -10,21 +10,21 @@ const reviews = [
   {
     name: "Sarah Johnson",
     role: "Medical Student",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80",
+    image: "/images/reviews/review1.jpeg",
     content: "Notelo has completely transformed how I study for medical school. The AI summaries are incredibly accurate and save me hours of time.",
     rating: 5
   },
   {
     name: "Michael Chen",
     role: "Software Engineer",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80",
+    image: "/images/reviews/review2.jpeg",
     content: "The ability to convert technical documentation into concise study materials is invaluable. Best investment in my learning journey.",
     rating: 5
   },
   {
     name: "Emily Rodriguez",
     role: "Law Student",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=crop&w=128&h=128&q=80",
+    image: "/images/reviews/review3.jpeg",
     content: "As a law student, I deal with massive amounts of reading. Notelo helps me extract key points and create effective study materials.",
     rating: 5
   }

@@ -1,0 +1,15 @@
+# https://notelo.ai/robots.txt
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://www.notelo-ai.com/sitemap.xml
+
+# Disallow private routes
+Disallow: /dashboard
+Disallow: /account
+Disallow: /api/
+Disallow: /admin/
+
+# Crawl-delay
+Crawl-delay: 10 

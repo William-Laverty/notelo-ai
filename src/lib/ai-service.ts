@@ -413,4 +413,52 @@ export const generateFlashcards = async (content: string): Promise<Flashcard[]> 
     }
     throw new Error('An unexpected error occurred while generating the flashcards');
   }
-}; 
+};
+
+export const generateDemoSummary = async (content: string): Promise<string> => {
+  try {
+    if (!content || content.trim().length === 0) {
+      throw new Error('Content is required');
+    }
+
+    const chunks = splitTextIntoChunks(content);
+    let summaryContent = content;
+    
+    if (chunks.length > 1) {
+      summaryContent = chunks[0];
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are a knowledgeable assistant that creates comprehensive and insightful summaries. 
+          Format your summaries in clear, engaging prose.
+          Focus on making the content informative and easy to understand.`
+        },
+        {
+          role: "user",
+          content: `Create a clear and concise summary of the following content:
+
+          ${summaryContent}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    });
+
+    const summary = response.choices[0]?.message?.content?.trim();
+    if (!summary) {
+      throw new Error('No summary generated');
+    }
+
+    return summary;
+  } catch (error) {
+    console.error('Error generating demo summary:', error);
+    if (error instanceof Error) {
+      throw new Error(`Demo summary generation failed: ${error.message}`);
+    }
+    throw new Error('Failed to generate demo summary');
+  }
+};

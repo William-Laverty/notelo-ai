@@ -10,6 +10,7 @@ import ContentViewer from '../content/ContentViewer';
 import ProcessingOverlay from '../loading/ProcessingOverlay';
 import URLInputDialog from '../url/URLInputDialog';
 import ShareStatsOverlay from '../share/ShareStatsOverlay';
+import LimitReachedDialog from '../upgrade/LimitReachedDialog';
 
 interface QuizQuestion {
   question: string;
@@ -130,6 +131,8 @@ export default function Dashboard() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isShareOverlayOpen, setIsShareOverlayOpen] = useState(false);
+  const [isLimitReachedDialogOpen, setIsLimitReachedDialogOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -146,6 +149,12 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDocuments();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
 
   const fetchDocuments = async () => {
     try {
@@ -164,6 +173,23 @@ export default function Dashboard() {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -173,9 +199,34 @@ export default function Dashboard() {
     }
   };
 
+  const checkUsageLimit = async () => {
+    // Fetch latest profile data to ensure accurate count
+    const { data: latestProfile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user?.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return false;
+    }
+
+    if (latestProfile?.usage_count >= 3 && (!latestProfile?.subscription_status || latestProfile?.subscription_status !== 'active')) {
+      setIsLimitReachedDialogOpen(true);
+      return false;
+    }
+
+    return true;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check usage limit
+    const canProceed = await checkUsageLimit();
+    if (!canProceed) return;
 
     setIsProcessing(true);
     const toastId = toast.loading('Processing your document...');
@@ -212,144 +263,172 @@ export default function Dashboard() {
     }
   };
 
-  const handleUrlButtonClick = () => {
+  const handleUrlButtonClick = async () => {
+    // Check usage limit
+    const canProceed = await checkUsageLimit();
+    if (!canProceed) return;
+
     setIsUrlDialogOpen(true);
   };
 
   const handleUrlSubmit = async (url: string) => {
-    if (!url) return;
-    
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-
-    try {
-      new URL(url);
-    } catch {
-      toast.error('Please enter a valid URL');
-      return;
-    }
+    // Check usage limit
+    const canProceed = await checkUsageLimit();
+    if (!canProceed) return;
 
     setIsProcessing(true);
-    setProcessingStatus('Fetching webpage content...');
-    setProcessingProgress(10);
+    const toastId = toast.loading('Processing URL...');
 
     try {
-      let html = '';
-      let error: Error | null = null;
-      let proxyAttempt = 1;
-      const maxAttempts = 3;
+      if (!url) return;
+      
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
 
-      const proxyUrls = [
-        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-        (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`
-      ];
+      try {
+        new URL(url);
+      } catch {
+        toast.error('Please enter a valid URL');
+        return;
+      }
 
-      for (const proxyUrl of proxyUrls) {
-        try {
-          setProcessingStatus(`Attempting to fetch content (try ${proxyAttempt}/${maxAttempts})...`);
-          const response = await fetch(proxyUrl(url), {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      setProcessingStatus('Fetching webpage content...');
+      setProcessingProgress(10);
+
+      try {
+        let html = '';
+        let error: Error | null = null;
+        let proxyAttempt = 1;
+        const maxAttempts = 3;
+
+        const proxyUrls = [
+          (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+          (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+          (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`
+        ];
+
+        for (const proxyUrl of proxyUrls) {
+          try {
+            setProcessingStatus(`Attempting to fetch content (try ${proxyAttempt}/${maxAttempts})...`);
+            const response = await fetch(proxyUrl(url), {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
             }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          html = await response.text();
-          
-          // More precise error page detection
-          const errorIndicators = [
-            'CLOUDFLARE_ERROR_1000S_BOX',
-            '404 - Page Not Found',
-            'Access to this page has been denied',
-            'Please complete the security check to access',
-            'Please verify you are a human',
-            'captcha',
-            'robot verification'
-          ];
+            
+            html = await response.text();
+            
+            // More precise error page detection
+            const errorIndicators = [
+              'CLOUDFLARE_ERROR_1000S_BOX',
+              '404 - Page Not Found',
+              'Access to this page has been denied',
+              'Please complete the security check to access',
+              'Please verify you are a human',
+              'captcha',
+              'robot verification'
+            ];
 
-          const hasErrorIndicators = errorIndicators.some(indicator => 
-            html.toLowerCase().includes(indicator.toLowerCase())
-          );
+            const hasErrorIndicators = errorIndicators.some(indicator => 
+              html.toLowerCase().includes(indicator.toLowerCase())
+            );
 
-          // Only consider it an error page if it has error indicators AND is short
-          if (hasErrorIndicators && html.length < 1000) {
-            throw new Error('Invalid content received: Error page detected');
-          }
+            // Only consider it an error page if it has error indicators AND is short
+            if (hasErrorIndicators && html.length < 1000) {
+              throw new Error('Invalid content received: Error page detected');
+            }
 
-          // Check for minimum content length
-          if (html.length < 100) {
-            throw new Error('Invalid content: Page is too short');
-          }
-          
-          error = null;
-          break;
-        } catch (e) {
-          if (e instanceof Error) {
-            error = e;
-          } else {
-            error = new Error('An unknown error occurred');
-          }
-          proxyAttempt++;
-          if (proxyAttempt <= maxAttempts) {
-            setProcessingStatus('Retrying with different proxy...');
-            continue;
+            // Check for minimum content length
+            if (html.length < 100) {
+              throw new Error('Invalid content: Page is too short');
+            }
+            
+            error = null;
+            break;
+          } catch (e) {
+            if (e instanceof Error) {
+              error = e;
+            } else {
+              error = new Error('An unknown error occurred');
+            }
+            proxyAttempt++;
+            if (proxyAttempt <= maxAttempts) {
+              setProcessingStatus('Retrying with different proxy...');
+              continue;
+            }
           }
         }
+
+        if (!html) {
+          throw error || new Error('Failed to fetch webpage content. The website might be blocking access.');
+        }
+
+        setProcessingStatus('Extracting content...');
+        setProcessingProgress(30);
+        
+        // Parse HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Extract content
+        const text = extractMainContent(doc);
+        
+        // More thorough content validation
+        if (!text || text.length < 200) {  // Increased minimum length
+          throw new Error('Could not find meaningful content. The page might be empty or require authentication.');
+        }
+
+        // Additional validation for extracted content
+        const contentWords = text.split(/\s+/).length;
+        if (contentWords < 50) {  // Ensure we have enough words
+          throw new Error('The extracted content is too short to be meaningful. Try a different URL.');
+        }
+        
+        // Clean up the text
+        const cleanedText = text
+          .replace(/\s+/g, ' ')
+          .replace(/\b(Accept|Cookie|Menu|Navigation|Search|Skip to content)\b/gi, '')
+          .trim();
+
+        // Get page title with fallbacks
+        let title = doc.querySelector('title')?.textContent?.trim() ||
+                    doc.querySelector('h1')?.textContent?.trim() ||
+                    doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ||
+                    new URL(url).hostname;
+
+        // Clean up title
+        title = title
+          .replace(/\s*\|\s*.*$/, '')  // Remove site name after |
+          .replace(/\s*-\s*.*$/, '')   // Remove site name after -
+          .trim();
+
+        setProcessingStatus('Processing content...');
+        setProcessingProgress(50);
+
+        await processContent(cleanedText, title, 'url' as const);
+        toast.success('URL processed successfully');
+      } catch (error: any) {
+        console.error('Error processing URL:', error);
+        let errorMessage = error.message;
+        
+        // Make error messages more user-friendly
+        if (errorMessage.includes('Failed to fetch')) {
+          errorMessage = 'Unable to access the webpage. The site might be blocking access or require authentication.';
+        } else if (errorMessage.includes('No meaningful content found')) {
+          errorMessage = 'Could not find article content. Try using a direct link to an article page.';
+        }
+        
+        toast.error(errorMessage);
+      } finally {
+        setIsProcessing(false);
+        setProcessingProgress(0);
+        setProcessingStatus('');
       }
-
-      if (!html) {
-        throw error || new Error('Failed to fetch webpage content. The website might be blocking access.');
-      }
-
-      setProcessingStatus('Extracting content...');
-      setProcessingProgress(30);
-      
-      // Parse HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      // Extract content
-      const text = extractMainContent(doc);
-      
-      // More thorough content validation
-      if (!text || text.length < 200) {  // Increased minimum length
-        throw new Error('Could not find meaningful content. The page might be empty or require authentication.');
-      }
-
-      // Additional validation for extracted content
-      const contentWords = text.split(/\s+/).length;
-      if (contentWords < 50) {  // Ensure we have enough words
-        throw new Error('The extracted content is too short to be meaningful. Try a different URL.');
-      }
-      
-      // Clean up the text
-      const cleanedText = text
-        .replace(/\s+/g, ' ')
-        .replace(/\b(Accept|Cookie|Menu|Navigation|Search|Skip to content)\b/gi, '')
-        .trim();
-
-      // Get page title with fallbacks
-      let title = doc.querySelector('title')?.textContent?.trim() ||
-                  doc.querySelector('h1')?.textContent?.trim() ||
-                  doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ||
-                  new URL(url).hostname;
-
-      // Clean up title
-      title = title
-        .replace(/\s*\|\s*.*$/, '')  // Remove site name after |
-        .replace(/\s*-\s*.*$/, '')   // Remove site name after -
-        .trim();
-
-      setProcessingStatus('Processing content...');
-      setProcessingProgress(50);
-
-      await processContent(cleanedText, title, 'url' as const);
-      toast.success('URL processed successfully');
     } catch (error: any) {
       console.error('Error processing URL:', error);
       let errorMessage = error.message;
@@ -362,10 +441,6 @@ export default function Dashboard() {
       }
       
       toast.error(errorMessage);
-    } finally {
-      setIsProcessing(false);
-      setProcessingProgress(0);
-      setProcessingStatus('');
     }
   };
 
@@ -408,6 +483,37 @@ export default function Dashboard() {
         .eq('id', document.id);
 
       if (summaryError) throw summaryError;
+
+      // Update usage count in profiles table
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('usage_count')
+        .eq('id', user?.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching profile:', fetchError);
+        throw fetchError;
+      }
+
+      const currentCount = typeof currentProfile?.usage_count === 'number' ? currentProfile.usage_count : 0;
+      const newCount = currentCount + 1;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          usage_count: newCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (profileError) {
+        console.error('Error updating usage count:', profileError);
+        throw profileError;
+      }
+
+      // Refresh profile data in component state
+      await fetchProfile();
 
       // Update local state
       setDocuments(prev => prev?.map(doc => 
@@ -491,6 +597,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <LimitReachedDialog 
+        isOpen={isLimitReachedDialogOpen}
+        onClose={() => setIsLimitReachedDialogOpen(false)}
+      />
       <ProcessingOverlay 
         isVisible={isProcessing}
         status={processingStatus}
