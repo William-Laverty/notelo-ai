@@ -20,7 +20,6 @@ export default function Signup() {
   const hasUpperCase = /[A-Z]/.test(password);
   const hasLowerCase = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
-  const hasSpecialChar = /[@$!%*?&]/.test(password);
 
   const validateForm = () => {
     const emailValidation = validateEmail(email);
@@ -50,40 +49,50 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
-      // First check if user already exists
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (existingUser) {
-        toast.error('An account with this email already exists');
-        return;
-      }
-
-      // Sign up the user
+      // Sign up the user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (authError) throw authError;
-      if (!authData.user?.id) throw new Error('No user ID returned from signup');
 
-      // Create their profile
+      if (!authData.user) {
+        throw new Error('No user data returned after signup');
+      }
+
+      // Create profile for the user
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
           {
             id: authData.user.id,
-            email: email,
+            email: authData.user.email,
+            created_at: new Date().toISOString(),
+            study_hours: 0,
+            content_preference: 'text',
+            study_goal: 'save_time',
             onboarding_completed: false,
+            updated_at: new Date().toISOString(),
+            subscription_status: 'free',
+            subscription_tier: 'free',
+            usage_count: 0
           }
         ]);
 
       if (profileError) throw profileError;
-      
+
+      // Verify profile was created
+      const { data: profile, error: verifyError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (verifyError || !profile) {
+        throw new Error('Failed to verify profile creation');
+      }
+
       toast.success('Account created successfully!');
       navigate('/onboarding');
     } catch (error: any) {
@@ -206,7 +215,6 @@ export default function Signup() {
                   <PasswordRequirement met={hasUpperCase} label="One uppercase letter" />
                   <PasswordRequirement met={hasLowerCase} label="One lowercase letter" />
                   <PasswordRequirement met={hasNumber} label="One number" />
-                  <PasswordRequirement met={hasSpecialChar} label="One special character" />
                 </div>
               </div>
             </div>

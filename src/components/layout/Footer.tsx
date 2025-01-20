@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Mail, Github, Twitter } from 'lucide-react';
+import { Mail, Github, Twitter } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -10,8 +10,8 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                <BookOpen className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 flex items-center justify-center p-2 shadow-sm">
+                <img src="/notebook.png" alt="Notelo" className="w-6 h-6" />
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
                 Notelo

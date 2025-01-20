@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Clock, BookOpen, Brain, ArrowRight, CheckCircle2, Sparkles, Target, Zap, Star, Rocket } from 'lucide-react';
+import { User, Clock, BookOpen, Brain, ArrowRight, CheckCircle2, Sparkles, Target, Zap, Star, Rocket, Timer } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase-client';
 import { toast } from 'react-hot-toast';
-import SpecialOffer from './SpecialOffer';
 
 interface OnboardingData {
   fullName: string;
   studyHours: number;
-  contentType: 'textbooks' | 'articles' | 'lectures' | 'other';
+  contentTypes: string[];
   goal: 'better_grades' | 'save_time' | 'deeper_understanding' | 'exam_prep';
 }
 
@@ -122,7 +121,7 @@ export default function Onboarding() {
   const [data, setData] = useState<OnboardingData>({
     fullName: '',
     studyHours: 5,
-    contentType: 'textbooks',
+    contentTypes: ['textbooks'],
     goal: 'save_time',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,7 +137,6 @@ export default function Onboarding() {
 
   const handleContinueFree = async () => {
     await handleSubmit();
-    navigate('/dashboard');
   };
 
   const handleSubmit = async () => {
@@ -151,7 +149,7 @@ export default function Onboarding() {
         .update({
           full_name: data.fullName,
           study_hours: data.studyHours,
-          content_preference: data.contentType,
+          content_preference: data.contentTypes.join(','),
           study_goal: data.goal,
           onboarding_completed: true,
           updated_at: new Date().toISOString(),
@@ -163,7 +161,19 @@ export default function Onboarding() {
         throw error;
       }
       
+      // Verify the update was successful
+      const { data: updatedProfile, error: verifyError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (verifyError || !updatedProfile || !updatedProfile.onboarding_completed) {
+        throw new Error('Failed to verify profile update');
+      }
+
       toast.success('Profile updated successfully!');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile. Please try again.');
@@ -173,7 +183,20 @@ export default function Onboarding() {
   };
 
   const nextStep = () => {
-    if (step < 5) setStep(step + 1);
+    if (step < 5) {
+      setStep(step + 1);
+    }
+  };
+
+  const handleUpgradeClick = async () => {
+    if (!user?.id) {
+      toast.error('Please sign in to upgrade');
+      return;
+    }
+
+    // Store the current step in localStorage to handle navigation after payment
+    localStorage.setItem('onboarding_payment_pending', 'true');
+    navigate('/payment');
   };
 
   const renderStep = () => {
@@ -273,7 +296,7 @@ export default function Onboarding() {
                 <BookOpen className="w-8 h-8 text-white" />
               </motion.div>
               <h2 className="text-2xl font-bold text-gray-900">Your study materials</h2>
-              <p className="text-gray-600 mt-2">Select the type of content you work with most</p>
+              <p className="text-gray-600 mt-2">Select the types of content you work with most</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {contentTypeOptions.map((option) => (
@@ -281,18 +304,23 @@ export default function Onboarding() {
                   key={option.value}
                   whileHover={{ scale: 1.02, translateY: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setData({ ...data, contentType: option.value as any })}
+                  onClick={() => {
+                    const newContentTypes = data.contentTypes.includes(option.value)
+                      ? data.contentTypes.filter(type => type !== option.value)
+                      : [...data.contentTypes, option.value];
+                    setData({ ...data, contentTypes: newContentTypes });
+                  }}
                   className={`p-4 rounded-xl border ${
-                    data.contentType === option.value
+                    data.contentTypes.includes(option.value)
                       ? 'border-primary bg-gradient-to-br from-primary/5 to-violet-500/5'
                       : 'border-gray-200 hover:border-primary/50'
                   } text-left transition-all duration-300`}
                 >
                   <option.icon className={`h-6 w-6 ${
-                    data.contentType === option.value ? 'text-primary' : 'text-gray-400'
+                    data.contentTypes.includes(option.value) ? 'text-primary' : 'text-gray-400'
                   } mb-2 transition-colors`} />
                   <h3 className={`font-medium ${
-                    data.contentType === option.value ? 'text-primary' : 'text-gray-900'
+                    data.contentTypes.includes(option.value) ? 'text-primary' : 'text-gray-900'
                   } transition-colors`}>
                     {option.label}
                   </h3>
@@ -397,7 +425,7 @@ export default function Onboarding() {
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.4 }}
+                transition={{ delay: 0.2 }}
                 onClick={nextStep}
                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
@@ -409,7 +437,71 @@ export default function Onboarding() {
 
       case 5:
         const { monthlyTimeSaved: timeSaved } = calculateTimeSaved();
-        return <SpecialOffer timeSaved={timeSaved} onContinueFree={handleContinueFree} />;
+        return (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-8"
+          >
+            <div className="bg-white rounded-2xl shadow-lg border border-primary/20 overflow-hidden">
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-8">
+                <div className="flex items-center justify-center gap-3 text-primary font-semibold mb-4">
+                  <Timer className="w-5 h-5" />
+                  <span>Special New User Offer</span>
+                </div>
+                <h2 className="text-2xl font-bold text-center text-gray-900 mb-4">
+                  You Could Save {Math.round(timeSaved)} Hours Every Month!
+                </h2>
+                <p className="text-center text-gray-600 max-w-lg mx-auto">
+                  Upgrade to Pro now and unlock advanced AI summaries, priority processing, and interactive quizzes.
+                  Start saving more time today!
+                </p>
+              </div>
+
+              <div className="p-8">
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-amber-50">
+                    <Star className="w-6 h-6 text-amber-500" />
+                    <div>
+                      <h3 className="font-semibold text-gray-900">40% Off Pro Plan</h3>
+                      <p className="text-gray-600">Limited time offer for new users</p>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="text-2xl font-bold text-gray-900">$5.99</div>
+                      <div className="text-sm text-gray-500 line-through">$9.99</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center space-y-4">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleUpgradeClick}
+                      className="w-full btn-primary relative overflow-hidden bg-gradient-to-r from-primary via-violet-500 to-primary bg-size-200 flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-medium shadow-xl shadow-primary/20 hover:bg-right transition-all duration-500"
+                    >
+                      Upgrade Now
+                      <ArrowRight className="w-5 h-5" />
+                    </motion.button>
+                    <motion.button
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      onClick={handleSubmit}
+                      className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      Continue with free plan
+                    </motion.button>
+                  </div>
+
+                  <p className="text-center text-sm text-gray-500">
+                    30-day money-back guarantee. Cancel anytime.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
     }
   };
 

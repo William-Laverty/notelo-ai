@@ -68,7 +68,7 @@ export default function Hero() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen bg-background">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#F7F9FD] via-white to-violet-100/20" />
       
@@ -133,10 +133,28 @@ export default function Hero() {
                       <span className="bg-gradient-to-r from-primary to-violet-500 text-transparent bg-clip-text">Not Harder</span>
                     </h1>
                     <p className="text-lg sm:text-xl text-gray-900 mx-auto lg:mx-0 max-w-lg">
-                    Create personalized study materials instantly from any digital content using AI-powered summaries, quizzes, flashcards, and podcasts.
+                      Transform any document into personalized study materials with AI-powered summaries, interactive quizzes, smart flashcards for better retention, and audio notes for on-the-go learning.
                     </p>
                   </div>
                   
+                  {/* Stats Banner */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-6"
+                  >
+                    <div className="relative group inline-block">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400/30 to-emerald-600/30 rounded-full blur-lg group-hover:blur-xl transition-all duration-300"></div>
+                      <div className="relative px-6 py-2 bg-black/10 border border-emerald-500/30 rounded-full backdrop-blur-md">
+                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-500">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                          <span>Join <span className="font-bold">48 users</span> who started learning smarter today</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+
                   {/* Content types grid - 3 columns */}
                   <div className="mt-12 sm:mt-8">
                     <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0">
@@ -189,6 +207,23 @@ export default function Hero() {
                 >
                   <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                     <div className="p-4 sm:p-6">
+                      {/* Header - Always visible */}
+                      <div className="flex items-center gap-2 mb-2 justify-center lg:justify-start">
+                        <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+                          <Sparkles className="w-4 h-4 text-primary" />
+                          <span className="bg-gradient-to-r from-primary to-violet-500 text-transparent bg-clip-text">
+                            Try Our Demo
+                          </span>
+                        </h2>
+                        <div className="ml-auto flex items-center gap-1 bg-violet-100 text-violet-700 px-2 py-1 rounded-full text-[10px] font-medium">
+                          <Crown className="w-3 h-3" />
+                          Free Trial
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-4">
+                        Try with any article URL. Create an account to unlock all features.
+                      </p>
+
                       <AnimatePresence mode="wait">
                         {!summary ? (
                           <motion.div
@@ -199,22 +234,6 @@ export default function Hero() {
                             transition={{ duration: 0.3 }}
                             className="text-center lg:text-left"
                           >
-                            <div className="flex items-center gap-2 mb-2 justify-center lg:justify-start">
-                              <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold">
-                                <Sparkles className="w-4 h-4 text-primary" />
-                                <span className="bg-gradient-to-r from-primary to-violet-500 text-transparent bg-clip-text">
-                                  Try Our Demo
-                                </span>
-                              </h2>
-                              <div className="ml-auto flex items-center gap-1 bg-violet-100 text-violet-700 px-2 py-1 rounded-full text-[10px] font-medium">
-                                <Crown className="w-3 h-3" />
-                                Free Trial
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500 mb-4">
-                              Try with any article URL. Create an account to unlock all features.
-                            </p>
-                            
                             {/* URL Input Form */}
                             <form onSubmit={handleUrlSubmit} className="mb-4">
                               <div className="relative group">
@@ -271,7 +290,7 @@ export default function Hero() {
                                 <div className="p-1.5 rounded-lg bg-violet-500/10 mb-1">
                                   <MessageSquare className="text-violet-500 w-4 h-4" />
                                 </div>
-                                <h3 className="font-medium text-xs text-gray-900">AI Quizzes</h3>
+                                <h3 className="font-medium text-xs text-gray-900">Interactive Quizzes</h3>
                               </motion.div>
 
                               <motion.div 
@@ -282,7 +301,8 @@ export default function Hero() {
                                 <div className="p-1.5 rounded-lg bg-blue-500/10 mb-1">
                                   <BookOpenCheck className="text-blue-500 w-4 h-4" />
                                 </div>
-                                <h3 className="font-medium text-xs text-gray-900">Flashcards</h3>
+                                <h3 className="font-medium text-xs text-gray-900">Smart Flashcards</h3>
+                                <p className="text-[10px] text-gray-500">For better retention</p>
                               </motion.div>
 
                               <motion.div 
@@ -294,17 +314,11 @@ export default function Hero() {
                                   <Podcast className="text-green-500 w-4 h-4" />
                                 </div>
                                 <h3 className="font-medium text-xs text-gray-900">Audio Notes</h3>
+                                <p className="text-[10px] text-gray-500">Learn on the go</p>
                               </motion.div>
-                            </div>
-
-                            {/* Premium Banner */}
-                            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] sm:text-xs text-gray-500 bg-violet-50 py-2 px-3 rounded-lg">
-                              <Crown className="w-3 h-3 text-violet-500" />
-                              <span>Create an account to unlock all features</span>
                             </div>
                           </motion.div>
                         ) : (
-                          // Summary View - Simplified for mobile
                           <motion.div
                             key="summary"
                             initial={{ opacity: 0 }}
@@ -339,7 +353,7 @@ export default function Hero() {
                                   <div className="p-1.5 rounded-lg bg-violet-500/10 mb-1">
                                     <MessageSquare className="text-violet-500 w-4 h-4" />
                                   </div>
-                                  <h3 className="font-medium text-xs text-gray-900">AI Quizzes</h3>
+                                  <h3 className="font-medium text-xs text-gray-900">Interactive Quizzes</h3>
                                 </motion.div>
 
                                 <motion.div 
@@ -351,7 +365,8 @@ export default function Hero() {
                                   <div className="p-1.5 rounded-lg bg-blue-500/10 mb-1">
                                     <BookOpenCheck className="text-blue-500 w-4 h-4" />
                                   </div>
-                                  <h3 className="font-medium text-xs text-gray-900">Flashcards</h3>
+                                  <h3 className="font-medium text-xs text-gray-900">Smart Flashcards</h3>
+                                  <p className="text-[10px] text-gray-500">For better retention</p>
                                 </motion.div>
 
                                 <motion.div 

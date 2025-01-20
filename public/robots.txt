@@ -2,14 +2,20 @@
 User-agent: *
 Allow: /
 
-# Sitemaps
+# Sitemap location
 Sitemap: https://www.notelo-ai.com/sitemap.xml
 
-# Disallow private routes
-Disallow: /dashboard
-Disallow: /account
-Disallow: /api/
+# Prevent access to admin areas
 Disallow: /admin/
+Disallow: /api/
+Disallow: /private/
+
+# Allow crawling of important sections
+Allow: /features
+Allow: /pricing
+Allow: /about
+Allow: /contact
+Allow: /blog
 
 # Crawl-delay
 Crawl-delay: 10 

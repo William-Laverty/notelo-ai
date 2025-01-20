@@ -1,42 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowLeft, Shield, Zap, Star, Clock, Users } from 'lucide-react';
+import { Check, ArrowLeft, Shield, Zap, Star, Clock, Users, BookOpen, FileText, BrainCircuit, Headphones, ScrollText, Sparkles, Target, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { verifyPayPalSubscription } from '../api/paypal';
 import { toast } from 'react-hot-toast';
 
 const features = [
   {
-    icon: Zap,
-    title: 'Unlimited Processing',
-    description: 'Process as many documents as you need, no restrictions'
+    icon: BrainCircuit,
+    title: 'Interactive AI Quizzes',
+    description: 'Personalized quizzes generated from your study materials'
   },
   {
-    icon: Star,
-    title: 'Advanced AI Summaries',
-    description: 'Get deeper insights with context-aware AI analysis'
+    icon: FileText,
+    title: 'Advanced PDF Support',
+    description: 'Process and analyze any PDF document with smart annotations'
   },
   {
-    icon: Clock,
-    title: 'Priority Processing',
-    description: '2x faster processing speed for all your documents'
+    icon: ScrollText,
+    title: 'Smart Flashcards',
+    description: 'AI-generated flashcards from your notes and documents'
   },
   {
-    icon: Users,
-    title: 'Priority Support',
-    description: 'Get help when you need it with dedicated support'
+    icon: Headphones,
+    title: 'Audio Notes',
+    description: 'Convert your notes to audio for on-the-go learning'
   }
-];
-
-const additionalFeatures = [
-  'Interactive study quizzes',
-  'Custom learning paths',
-  'Progress tracking',
-  'Early access to new features',
-  'Advanced export options',
-  'Offline access'
 ];
 
 const guarantees = [
@@ -54,14 +45,23 @@ const guarantees = [
   }
 ];
 
-export default function Payment() {
+// PayPal Button wrapper component for better loading handling
+function PayPalButtonWrapper() {
+  const [{ isPending, isRejected }] = usePayPalScriptReducer();
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  // Retry loading if failed
+  useEffect(() => {
+    if (isRejected && retryCount < 3) {
+      const timer = setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+        window.location.reload();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isRejected, retryCount]);
 
   const handleApprove = async (data: any, actions: any) => {
     try {
@@ -72,7 +72,6 @@ export default function Payment() {
 
       console.log('PayPal subscription data:', data);
       
-      // Make sure we have a subscription ID
       if (!data.subscriptionID) {
         toast.error('No subscription ID received');
         return;
@@ -91,6 +90,64 @@ export default function Payment() {
       toast.error(error.message || 'Failed to verify subscription. Please contact support.');
     }
   };
+
+  if (isPending) {
+    return (
+      <div className="w-full py-8 flex flex-col items-center justify-center space-y-4">
+        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-gray-600 text-sm">Loading PayPal...</p>
+      </div>
+    );
+  }
+
+  if (isRejected) {
+    return (
+      <div className="w-full py-8 flex flex-col items-center justify-center space-y-4">
+        <div className="text-red-500 text-center">
+          <p className="font-medium">Failed to load PayPal</p>
+          <p className="text-sm text-gray-600 mt-2">
+            {retryCount < 3 ? 'Retrying...' : 'Please refresh the page or try again later.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PayPalButtons
+      style={{
+        shape: 'pill',
+        color: 'blue',
+        layout: 'vertical',
+        label: 'subscribe'
+      }}
+      createSubscription={(data, actions) => {
+        console.log('Creating subscription...');
+        return actions.subscription.create({
+          plan_id: 'P-2YL98489JN785131BM6DWIHQ'
+        });
+      }}
+      onApprove={handleApprove}
+      onCancel={() => {
+        console.log('Subscription cancelled');
+        toast.error('Subscription cancelled');
+      }}
+      onError={(err) => {
+        console.error('PayPal error:', err);
+        toast.error('Something went wrong. Please try again.');
+      }}
+    />
+  );
+}
+
+export default function Payment() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-primary/5 to-gray-50">
@@ -136,8 +193,8 @@ export default function Payment() {
                       transition={{ delay: index * 0.1 }}
                       className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-100"
                     >
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <feature.icon className="w-5 h-5 text-primary" />
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <feature.icon className="w-6 h-6 text-primary" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900">{feature.title}</h3>
@@ -147,22 +204,52 @@ export default function Payment() {
                   ))}
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 gap-4">
-                  {additionalFeatures.map((feature, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-2"
-                    >
-                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-                        <Check className="w-3 h-3 text-green-600" />
-                      </div>
-                      <span className="text-sm text-gray-700">{feature}</span>
-                    </motion.div>
-                  ))}
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-8 p-6 rounded-2xl relative overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(to right, rgba(236, 252, 243, 0.5), rgba(236, 252, 243, 0.8))',
+                    boxShadow: '0 0 20px rgba(52, 211, 153, 0.2)'
+                  }}
+                >
+                  {/* Glowing border effect */}
+                  <div className="absolute inset-0 rounded-2xl"
+                    style={{
+                      background: 'linear-gradient(45deg, rgba(52, 211, 153, 0.3), rgba(147, 197, 253, 0.3))',
+                      filter: 'blur(20px)',
+                      zIndex: -1
+                    }}
+                  />
+                  
+                  <div className="flex items-center gap-4">
+                    {/* Profile picture with gradient border */}
+                    <div className="relative flex-shrink-0">
+                      <div className="absolute inset-0 rounded-full"
+                        style={{
+                          background: 'linear-gradient(45deg, #818cf8, #6366f1)',
+                          transform: 'scale(1.05)',
+                          filter: 'blur(2px)'
+                        }}
+                      />
+                      <img
+                        src="https://media.licdn.com/dms/image/v2/D5603AQECz38Hxb5AfA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1723335041427?e=1742428800&v=beta&t=TrY51I1SfpjYwl_IHticpHGkPBwFnSbxg8evMi7hEbY"
+                        alt="William"
+                        className="w-16 h-16 rounded-full border-2 border-white relative z-10 object-cover"
+                      />
+                    </div>
+
+                    {/* Personalized message */}
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900 mb-1">Hey I'm Will! 👋</h4>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        I'm the solo developer behind Notelo Pro and I'm excited to have you onboard! 
+                        I've been working on this for a while now and would love to have your support.
+                        By subscribing to Notelo Pro, you'll be helping me to build better features for Notelo.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
 
@@ -214,6 +301,102 @@ export default function Payment() {
               
               <div className="relative">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Complete Your Purchase</h2>
+
+                {/* Order Summary */}
+                <div className="mb-8 p-4 rounded-xl bg-gray-50">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Notelo Pro (Monthly)</span>
+                      <span className="text-gray-900">$9.99</span>
+                    </div>
+                    <div className="flex justify-between items-center text-green-600">
+                      <span>New User Discount (40% off)</span>
+                      <span>-$4.00</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-3 mt-3">
+                      <div className="flex justify-between items-center font-semibold">
+                        <span className="text-gray-900">Total (per month)</span>
+                        <span className="text-2xl text-primary">$5.99</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* What You're Getting */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">What You're Getting</h3>
+                  <div className="space-y-4">
+                    {/* Primary Features */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <BrainCircuit className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <span className="text-gray-900 font-medium">Interactive AI Quizzes</span>
+                          <p className="text-sm text-gray-600">Test your knowledge with smart quizzes</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <span className="text-gray-900 font-medium">Advanced PDF Support</span>
+                          <p className="text-sm text-gray-600">Process any PDF with smart annotations</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <ScrollText className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <span className="text-gray-900 font-medium">Smart Flashcards</span>
+                          <p className="text-sm text-gray-600">AI-generated study cards</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Headphones className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <span className="text-gray-900 font-medium">Audio Notes</span>
+                          <p className="text-sm text-gray-600">Learn on the go with audio conversion</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 my-4"></div>
+
+                    {/* Additional Features */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-primary" />
+                        <span className="text-sm text-gray-600">Unlimited Processing</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-primary" />
+                        <span className="text-sm text-gray-600">Priority Support</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <span className="text-sm text-gray-600">2x Processing Speed</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Upload className="w-4 h-4 text-primary" />
+                        <span className="text-sm text-gray-600">Cloud Storage</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Note */}
+                <div className="mb-8 flex items-center gap-2 text-sm text-gray-600">
+                  <Shield className="w-4 h-4" />
+                  <span>Your payment is secured by PayPal's encryption</span>
+                </div>
                 
                 {/* PayPal Button Container */}
                 <PayPalScriptProvider options={{
@@ -223,46 +406,15 @@ export default function Payment() {
                   "data-sdk-integration-source": "button-factory"
                 }}>
                   <div id="paypal-button-container-P-2YL98489JN785131BM6DWIHQ">
-                    <PayPalButtons
-                      style={{
-                        shape: 'pill',
-                        color: 'blue',
-                        layout: 'vertical',
-                        label: 'subscribe'
-                      }}
-                      createSubscription={(data, actions) => {
-                        console.log('Creating subscription...');
-                        return actions.subscription.create({
-                          plan_id: 'P-2YL98489JN785131BM6DWIHQ'
-                        });
-                      }}
-                      onApprove={(data, actions) => {
-                        console.log('Subscription approved:', data);
-                        return handleApprove(data, actions);
-                      }}
-                      onCancel={() => {
-                        console.log('Subscription cancelled');
-                        toast.error('Subscription cancelled');
-                      }}
-                      onError={(err) => {
-                        console.error('PayPal error:', err);
-                        toast.error('Something went wrong. Please try again.');
-                      }}
-                    />
+                    <PayPalButtonWrapper />
                   </div>
                 </PayPalScriptProvider>
 
-                <div className="mt-8 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200/50">
-                  <p className="text-amber-800 text-sm">
-                    <span className="font-semibold">Special Offer:</span> Get your first month at 50% off when you subscribe today!
+                {/* Money-back Guarantee */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-500">
+                    30-day money-back guarantee. Cancel anytime.
                   </p>
-                </div>
-
-                <div className="mt-8 text-center text-sm text-gray-500">
-                  By subscribing, you agree to our{' '}
-                  <a href="/terms" className="text-primary hover:text-primary/80">Terms of Service</a>
-                  {' '}and{' '}
-                  <a href="/privacy" className="text-primary hover:text-primary/80">Privacy Policy</a>
                 </div>
               </div>
             </div>

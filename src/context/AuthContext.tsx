@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -24,24 +25,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // If user is logged in, redirect to dashboard
-      if (session?.user) {
-        const currentPath = window.location.pathname;
-        if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
-          navigate('/dashboard');
-        }
+      if (session?.user && window.location.hash.includes('access_token')) {
+        navigate('/dashboard');
       }
+      setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
-
-      // Handle auth state changes
+      
       if (event === 'SIGNED_IN') {
         navigate('/dashboard');
       } else if (event === 'SIGNED_OUT') {
@@ -64,21 +58,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const signInWithGoogle = async () => {
+    // Use production URL if not in development
+    const redirectUrl = 'https://notelo.ai/dashboard';
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
+      }
+    });
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const value = {
+    user,
+    session,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut
+  };
 
   return (
-    <AuthContext.Provider value={{ user, session, signIn, signUp, signOut }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading ? children : (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      )}
     </AuthContext.Provider>
   );
 }

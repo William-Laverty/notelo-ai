@@ -1,49 +1,31 @@
 import { motion } from 'framer-motion';
-import { BookOpen, Users, Target, Heart, Sparkles, Globe } from 'lucide-react';
-import Footer from '../components/layout/Footer';
+import { BookOpen, Sparkles, Brain, Clock, Code, School, Rocket, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const values = [
+const features = [
   {
-    icon: Target,
-    title: 'Mission-Driven',
-    description: 'Our mission is to make knowledge more accessible by transforming how people consume and understand content.',
-    color: 'blue'
-  },
-  {
-    icon: Sparkles,
-    title: 'Innovation First',
-    description: 'We continuously push the boundaries of AI technology to deliver the best possible experience.',
+    icon: Brain,
+    title: 'AI-Powered Learning',
+    description: 'Leveraging cutting-edge AI to transform how students understand and retain information.',
     color: 'purple'
   },
   {
-    icon: Users,
-    title: 'User-Centered',
-    description: "Every feature and improvement is designed with our users' needs and feedback in mind.",
+    icon: Clock,
+    title: 'Time-Saving',
+    description: 'Built to help students focus on understanding concepts rather than just processing information.',
+    color: 'blue'
+  },
+  {
+    icon: Code,
+    title: 'Solo-Built',
+    description: 'Developed independently with a focus on solving real student problems through technology.',
     color: 'green'
   },
   {
-    icon: Heart,
-    title: 'Quality Focused',
-    description: 'We maintain the highest standards in our summaries and insights to ensure valuable outcomes.',
+    icon: School,
+    title: 'Student-First',
+    description: 'Created by a student, for students, with real understanding of academic challenges.',
     color: 'red'
-  }
-];
-
-const team = [
-  {
-    name: 'Sarah Johnson',
-    role: 'CEO & Founder',
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=4&w=256&h=256&q=80'
-  },
-  {
-    name: 'Michael Chen',
-    role: 'CTO',
-    image: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=4&w=256&h=256&q=80'
-  },
-  {
-    name: 'Emma Wilson',
-    role: 'Head of AI',
-    image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=4&w=256&h=256&q=80'
   }
 ];
 
@@ -69,13 +51,14 @@ const itemVariants = {
 };
 
 export default function About() {
+  const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <>
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="bg-white border-b border-gray-200"
+        className="bg-white border-b border-gray-200 pt-20"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
@@ -88,143 +71,144 @@ export default function About() {
               <BookOpen className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-6">
-              About{' '}
+              The Story Behind{' '}
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
                 Notelo
               </span>
             </h1>
             <p className="text-xl text-gray-600">
-              We're on a mission to transform how people read and understand content through the power of AI.
+              A student's journey to revolutionize learning through AI technology
             </p>
           </motion.div>
         </div>
       </motion.div>
 
-      {/* Story Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        {/* Vision Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl shadow-sm border border-gray-200 p-8 mb-24"
+        >
+          <div className="max-w-3xl mx-auto text-center">
+            <Sparkles className="w-12 h-12 text-primary mx-auto mb-6" />
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">The Vision</h2>
+            <p className="text-xl text-gray-600 mb-8">
+              My goal is to make Notelo the go-to learning companion for students worldwide. I believe that with the right tools, 
+              anyone can master complex subjects and achieve their academic goals. By combining AI technology with a deep 
+              understanding of student needs, I'm working to make that vision a reality.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Story Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-24"
         >
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Story</h2>
-            <div className="prose prose-lg text-gray-600">
-              <p>
-                Notelo was born from a simple observation: in today's fast-paced world, 
-                people are overwhelmed with information but short on time. We believed there 
-                had to be a better way to consume and understand content without sacrificing depth or quality.
-              </p>
-              <p>
-                Founded in 2023, we set out to build an AI-powered platform that could transform 
-                how people read and learn. Our team of experts in artificial intelligence, natural 
-                language processing, and user experience design worked tirelessly to create a solution 
-                that could intelligently summarize content while preserving its key insights.
-              </p>
-              <p>
-                Today, Notelo helps thousands of users save time and gain deeper understanding 
-                from their reading. But we're just getting started. We continue to innovate and 
-                push the boundaries of what's possible with AI-powered content understanding.
-              </p>
+            <div className="flex items-center gap-6 mb-12">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 rounded-full blur-lg opacity-70"></div>
+                <img
+                  src="https://media.licdn.com/dms/image/v2/D5603AQECz38Hxb5AfA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1723335041427?e=1742428800&v=beta&t=TrY51I1SfpjYwl_IHticpHGkPBwFnSbxg8evMi7hEbY"
+                  alt="William Laverty"
+                  className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 p-2 relative"
+                />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">William Laverty</h2>
+                <p className="text-gray-600">Founder & Developer</p>
+              </div>
+            </div>
+
+            <div className="space-y-12">
+              <div className="flex gap-6 items-start">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Rocket className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="prose prose-lg text-gray-600">
+                  <p>
+                    Hey! I'm William, a college student and indie developer who created Notelo out of personal necessity. 
+                    During my studies, I found myself struggling to find effective tools that could help me study more efficiently. 
+                    The existing solutions weren't quite cutting it – they either oversimplified content or were too time-consuming to use.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-6 items-start">
+                <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <GraduationCap className="w-6 h-6 text-purple-600" />
+                </div>
+                <div className="prose prose-lg text-gray-600">
+                  <p>
+                    That's when I decided to build Notelo. As a student myself, I understood firsthand the challenges of balancing 
+                    coursework, understanding complex topics, and managing time effectively. I wanted to create something that could 
+                    transform any type of content – whether it's lecture videos, research papers, or textbook chapters – into 
+                    clear, actionable study materials.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-6 items-start">
+                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <Code className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="prose prose-lg text-gray-600">
+                  <p>
+                    Working solo on Notelo has been both challenging and rewarding. Every feature is built with students in mind, 
+                    focusing on what really matters: understanding concepts deeply and retaining information effectively. I'm 
+                    constantly improving Notelo based on feedback from fellow students and users, making it better every day.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Values Section */}
+        {/* Features Section */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-24"
         >
-          {values.map((value) => {
-            const Icon = value.icon;
+          {features.map((feature) => {
+            const Icon = feature.icon;
             return (
               <motion.div
-                key={value.title}
+                key={feature.title}
                 variants={itemVariants}
                 className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-gray-200"
               >
-                <div className={`w-12 h-12 rounded-xl bg-${value.color}-100 flex items-center justify-center mb-6`}>
-                  <Icon className={`w-6 h-6 text-${value.color}-600`} />
+                <div className={`w-12 h-12 rounded-xl bg-${feature.color}-100 flex items-center justify-center mb-6`}>
+                  <Icon className={`w-6 h-6 text-${feature.color}-600`} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">{value.title}</h3>
-                <p className="text-gray-600">{value.description}</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
               </motion.div>
             );
           })}
         </motion.div>
 
-        {/* Team Section */}
+        {/* Join Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-24"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Meet Our Team</h2>
-          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
-            We're a passionate team of experts dedicated to transforming how people consume and understand content.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {team.map((member) => (
-              <motion.div
-                key={member.name}
-                variants={itemVariants}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-gray-200"
-              >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-6 object-cover"
-                />
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{member.name}</h3>
-                <p className="text-gray-600">{member.role}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Stats Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-24"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">1M+</div>
-              <div className="text-gray-600">Documents Processed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">50K+</div>
-              <div className="text-gray-600">Active Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-primary mb-2">30+</div>
-              <div className="text-gray-600">Countries</div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
+          className="text-center bg-white rounded-xl shadow-sm border border-gray-200 p-12"
         >
           <h2 className="text-3xl font-bold text-gray-900 mb-6">
-            Join Us on Our Mission
+            Join Me on This Journey
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Be part of the future of content consumption and understanding.
+            Experience a new way of learning that's designed by a student who understands your challenges.
           </p>
-          <button className="btn-primary px-8 py-4 rounded-xl text-lg font-medium">
-            Get Started Today
+          <button className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-xl text-lg font-medium transition-colors" onClick={() => navigate('/signup')}>
+            Try Notelo Today
           </button>
         </motion.div>
       </div>
-
-      <Footer />
-    </div>
+    </>
   );
 } 

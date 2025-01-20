@@ -241,9 +241,14 @@ export default function Account() {
 
         {/* Study Preferences */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Study Preferences</h2>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-violet-500/10 flex items-center justify-center">
+              <Settings className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Study Preferences</h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10">
+            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10 hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Clock className="w-5 h-5 text-primary" />
@@ -255,26 +260,38 @@ export default function Account() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10">
+            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10 hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Book className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Content Type</p>
-                  <p className="text-lg font-semibold text-gray-900">{profile?.content_preference || 'Not set'}</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {profile?.content_preference ? 
+                      profile.content_preference.split('_').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ') 
+                      : 'Not set'}
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10">
+            <div className="bg-gradient-to-br from-primary/5 to-violet-500/5 rounded-xl p-5 border border-primary/10 hover:shadow-md transition-all duration-300">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Target className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Study Goal</p>
-                  <p className="text-lg font-semibold text-gray-900">{profile?.study_goal || 'Not set'}</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {profile?.study_goal ? 
+                      profile.study_goal.split('_').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ') 
+                      : 'Not set'}
+                  </p>
                 </div>
               </div>
             </div>

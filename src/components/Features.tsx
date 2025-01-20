@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Clock, BookOpen, Brain, Sparkles, Youtube, FileText, PenTool } from 'lucide-react';
+import { Zap, Clock, BookOpen, Brain, Sparkles, Youtube, FileText, PenTool, BookOpenCheck } from 'lucide-react';
 
 interface FeaturesProps {
   id?: string;
@@ -38,9 +38,9 @@ const features = [
     color: 'amber'
   },
   {
-    icon: FileText,
-    title: 'Document Management',
-    description: 'Organize and access all your summaries in one place.',
+    icon: BookOpenCheck,
+    title: 'Smart Flashcards',
+    description: 'Reinforce learning with AI-generated flashcards for better retention.',
     color: 'indigo'
   }
 ];

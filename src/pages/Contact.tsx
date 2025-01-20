@@ -1,12 +1,18 @@
 import { motion } from 'framer-motion';
-import { Mail, MessageSquare, Phone, MapPin } from 'lucide-react';
-import Footer from '../components/layout/Footer';
+import { Mail, MessageSquare, Phone, User } from 'lucide-react';
 
 const contactMethods = [
   {
+    icon: User,
+    title: 'William Laverty',
+    description: 'Solo Entrepreneur',
+    contact: 'www.william-laverty.online/',
+    color: 'purple'
+  },
+  {
     icon: Mail,
     title: 'Email',
-    description: 'Drop us a line anytime',
+    description: 'Send me an email anytime',
     contact: 'dev@william-laverty.online',
     color: 'blue'
   },
@@ -16,24 +22,17 @@ const contactMethods = [
     description: 'Call or leave a message',
     contact: '+61 401 664 431',
     color: 'green'
-  },
-  {
-    icon: MapPin,
-    title: 'Office',
-    description: 'Come say hello',
-    contact: '26 Durville Crescent, Griffith, ACT 2603',
-    color: 'purple'
   }
 ];
 
 export default function Contact() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <>
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="bg-white border-b border-gray-200"
+        className="bg-white border-b border-gray-200 pt-20"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
@@ -182,8 +181,6 @@ export default function Contact() {
           </motion.div>
         </div>
       </div>
-
-      <Footer />
-    </div>
+    </>
   );
 } 

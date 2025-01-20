@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Login from './components/auth/Login';
@@ -6,7 +8,6 @@ import Signup from './components/auth/Signup';
 import Dashboard from './components/dashboard/Dashboard';
 import Account from './components/account/Account';
 import ContentViewer from './components/content/ContentViewer';
-import PrivateRoute from './components/auth/PrivateRoute';
 import Onboarding from './components/onboarding/Onboarding';
 import FeaturesComponent from './components/Features';
 import PricingComponent from './components/Pricing';
@@ -23,6 +24,22 @@ import ScrollToTop from './components/ScrollToTop';
 import PageLayout from './components/layout/PageLayout';
 import MockupGenerator from './pages/MockupGenerator';
 import { Analytics } from "@vercel/analytics/react";
+import Admin from './pages/Admin';
+
+interface PrivateRouteProps {
+  children?: React.ReactNode;
+}
+
+function PrivateRoute({ children }: PrivateRouteProps) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children || <Outlet />;
+}
 
 export default function AppRoutes() {
   return (
@@ -32,14 +49,16 @@ export default function AppRoutes() {
       <Routes>
         {/* Landing page route */}
         <Route path="/" element={
-          <PageLayout>
+          <>
+            <Navbar />
             <Hero />
-            <FeaturesComponent id="features" />
+            <FeaturesComponent />
             <Reviews />
             <PricingComponent />
-          </PageLayout>
+            <Footer />
+          </>
         } />
-        
+
         {/* Public pages */}
         <Route path="/features" element={
           <PageLayout>
@@ -71,44 +90,32 @@ export default function AppRoutes() {
             <Privacy />
           </PageLayout>
         } />
-        
-        {/* Marketing Assets */}
-        <Route path="/mockups" element={<MockupGenerator />} />
-        
+
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        
-        {/* Protected routes */}
-        <Route path="/dashboard" element={
-          <PrivateRoute>
-            <PageLayout>
-              <Dashboard />
-            </PageLayout>
-          </PrivateRoute>
-        } />
-        <Route path="/account" element={
-          <PrivateRoute>
-            <PageLayout includeFooter={false}>
-              <Account />
-            </PageLayout>
-          </PrivateRoute>
-        } />
-        <Route path="/payment" element={
-          <PrivateRoute>
-            <PageLayout includeFooter={false}>
-              <Payment />
-            </PageLayout>
-          </PrivateRoute>
-        } />
+
+        {/* Protected Routes */}
+        <Route element={<PrivateRoute />}>
+          <Route path="/dashboard" element={<PageLayout includeNavbar={false}><Dashboard /></PageLayout>} />
+          <Route path="/account" element={<PageLayout includeNavbar={false}><Account /></PageLayout>} />
+          <Route path="/payment" element={<PageLayout includeNavbar={false}><Payment /></PageLayout>} />
+        </Route>
+
+        {/* Admin Route - Protected by passcode */}
+        <Route path="/admin" element={<PageLayout includeNavbar={false}><Admin /></PageLayout>} />
+
         <Route path="/onboarding" element={
           <PrivateRoute>
-            <Onboarding />
+            <PageLayout includeNavbar={false}>
+              <Onboarding />
+            </PageLayout>
           </PrivateRoute>
         } />
+
         <Route path="/document/:id" element={
           <PrivateRoute>
-            <PageLayout includeFooter={false}>
+            <PageLayout>
               <ContentViewer />
             </PageLayout>
           </PrivateRoute>

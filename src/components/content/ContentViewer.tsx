@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import QuizView from '../quiz/QuizView';
 import FlashcardView from '../flashcards/FlashcardView';
 import { generateQuiz, generateFlashcards, type Flashcard } from '../../lib/ai-service';
+import UpgradeDialog from '../upgrade/UpgradeDialog';
 
 interface QuizQuestion {
   question: string;
@@ -51,7 +52,9 @@ const calculateStats = (text: string) => {
 const calculateTimeSaved = (originalText: string, summaryText: string): number => {
   const originalReadingTime = calculateReadingTime(originalText);
   const summaryReadingTime = calculateReadingTime(summaryText);
-  return Math.max(0, originalReadingTime - summaryReadingTime);
+  const timeSaved = Math.max(0, originalReadingTime - summaryReadingTime);
+  // Ensure a minimum of 2 minutes saved
+  return Math.max(2, timeSaved);
 };
 
 export default function ContentViewer() {
@@ -62,6 +65,8 @@ export default function ContentViewer() {
   const [activeTab, setActiveTab] = useState<'summary' | 'quiz' | 'podcast' | 'flashcards'>('summary');
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -87,6 +92,27 @@ export default function ContentViewer() {
 
     fetchDocument();
   }, [id, navigate]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        setProfile(profile);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleGenerateQuiz = async () => {
     if (!document) return;
@@ -156,6 +182,22 @@ export default function ContentViewer() {
     } finally {
       setIsGeneratingFlashcards(false);
     }
+  };
+
+  const handleTabClick = (tab: 'summary' | 'quiz' | 'podcast' | 'flashcards') => {
+    // Allow summary tab for all users
+    if (tab === 'summary') {
+      setActiveTab(tab);
+      return;
+    }
+
+    // Check if user has pro access
+    if (!profile?.subscription_status || profile?.subscription_status !== 'active') {
+      setIsUpgradeDialogOpen(true);
+      return;
+    }
+
+    setActiveTab(tab);
   };
 
   const tabVariants = {
@@ -485,7 +527,7 @@ export default function ContentViewer() {
           {(['summary', 'quiz', 'flashcards', 'podcast'] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabClick(tab)}
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
                 activeTab === tab
                   ? 'bg-primary text-white shadow-sm'
@@ -507,6 +549,12 @@ export default function ContentViewer() {
         <AnimatePresence mode="wait">
           {renderTabContent()}
         </AnimatePresence>
+
+        {/* Upgrade Dialog */}
+        <UpgradeDialog 
+          isOpen={isUpgradeDialogOpen} 
+          onClose={() => setIsUpgradeDialogOpen(false)} 
+        />
       </main>
     </div>
   );

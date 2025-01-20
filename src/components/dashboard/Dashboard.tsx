@@ -5,12 +5,13 @@ import { supabase } from '../../lib/supabase-client';
 import { generateSummary, generateQuiz, generateTitle, generateCardDescription } from '../../lib/ai-service';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, LogOut, Search, Upload, FileText, Youtube, Link as LinkIcon, Clock, Calendar, Hash, MoreVertical, ChevronRight, User, Trash2, Timer, TrendingUp, Zap, Target, Award, Sparkles, Book, Share2 } from 'lucide-react';
+import { BookOpen, LogOut, Search, Upload, FileText, Youtube, Link as LinkIcon, Clock, Calendar, Hash, MoreVertical, ChevronRight, User, Trash2, Timer, TrendingUp, Zap, Target, Award, Sparkles, Book, Share2, Menu } from 'lucide-react';
 import ContentViewer from '../content/ContentViewer';
 import ProcessingOverlay from '../loading/ProcessingOverlay';
 import URLInputDialog from '../url/URLInputDialog';
 import ShareStatsOverlay from '../share/ShareStatsOverlay';
 import LimitReachedDialog from '../upgrade/LimitReachedDialog';
+import FreePlanDialog from '../upgrade/FreePlanDialog';
 
 interface QuizQuestion {
   question: string;
@@ -38,7 +39,9 @@ const calculateReadingTime = (text: string): number => {
 const calculateTimeSaved = (originalText: string, summaryText: string): number => {
   const originalReadingTime = calculateReadingTime(originalText);
   const summaryReadingTime = calculateReadingTime(summaryText);
-  return Math.max(0, originalReadingTime - summaryReadingTime);
+  const timeSaved = Math.max(0, originalReadingTime - summaryReadingTime);
+  // Ensure a minimum of 2 minutes saved
+  return Math.max(2, timeSaved);
 };
 
 const calculateEfficiencyScore = (originalText: string, summaryText: string): number => {
@@ -133,6 +136,9 @@ export default function Dashboard() {
   const [isShareOverlayOpen, setIsShareOverlayOpen] = useState(false);
   const [isLimitReachedDialogOpen, setIsLimitReachedDialogOpen] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isFreePlanDialogOpen, setIsFreePlanDialogOpen] = useState(false);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -220,11 +226,63 @@ export default function Dashboard() {
     return true;
   };
 
+  const handleFileButtonClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Fetch latest profile data to ensure accurate subscription status
+    const { data: latestProfile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user?.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Something went wrong. Please try again.');
+      return;
+    }
+
+    // Show upgrade dialog for free plan users and return early
+    if (!latestProfile?.subscription_status || latestProfile?.subscription_status !== 'active') {
+      setIsFreePlanDialogOpen(true);
+      return;
+    }
+
+    // Only proceed with file dialog for pro users
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.pdf';
+    fileInput.onchange = function(e) {
+      const event = e as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleFileUpload(event);
+    };
+    fileInput.click();
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check usage limit
+    // Fetch latest profile data to ensure accurate subscription status
+    const { data: latestProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user?.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching profile:', profileError);
+      toast.error('Something went wrong. Please try again.');
+      return;
+    }
+
+    // Show upgrade dialog for free plan users
+    if (!latestProfile?.subscription_status || latestProfile?.subscription_status !== 'active') {
+      setIsFreePlanDialogOpen(true);
+      return;
+    }
+
+    // Check usage limit only for subscribed users
     const canProceed = await checkUsageLimit();
     if (!canProceed) return;
 
@@ -296,139 +354,65 @@ export default function Dashboard() {
       setProcessingStatus('Fetching webpage content...');
       setProcessingProgress(10);
 
-      try {
-        let html = '';
-        let error: Error | null = null;
-        let proxyAttempt = 1;
-        const maxAttempts = 3;
-
-        const proxyUrls = [
-          (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-          (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-          (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`
-        ];
-
-        for (const proxyUrl of proxyUrls) {
-          try {
-            setProcessingStatus(`Attempting to fetch content (try ${proxyAttempt}/${maxAttempts})...`);
-            const response = await fetch(proxyUrl(url), {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-              }
-            });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            html = await response.text();
-            
-            // More precise error page detection
-            const errorIndicators = [
-              'CLOUDFLARE_ERROR_1000S_BOX',
-              '404 - Page Not Found',
-              'Access to this page has been denied',
-              'Please complete the security check to access',
-              'Please verify you are a human',
-              'captcha',
-              'robot verification'
-            ];
-
-            const hasErrorIndicators = errorIndicators.some(indicator => 
-              html.toLowerCase().includes(indicator.toLowerCase())
-            );
-
-            // Only consider it an error page if it has error indicators AND is short
-            if (hasErrorIndicators && html.length < 1000) {
-              throw new Error('Invalid content received: Error page detected');
-            }
-
-            // Check for minimum content length
-            if (html.length < 100) {
-              throw new Error('Invalid content: Page is too short');
-            }
-            
-            error = null;
-            break;
-          } catch (e) {
-            if (e instanceof Error) {
-              error = e;
-            } else {
-              error = new Error('An unknown error occurred');
-            }
-            proxyAttempt++;
-            if (proxyAttempt <= maxAttempts) {
-              setProcessingStatus('Retrying with different proxy...');
-              continue;
-            }
-          }
+      // Use a more reliable proxy service
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      
+      const response = await fetch(proxyUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+      });
 
-        if (!html) {
-          throw error || new Error('Failed to fetch webpage content. The website might be blocking access.');
-        }
-
-        setProcessingStatus('Extracting content...');
-        setProcessingProgress(30);
-        
-        // Parse HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        
-        // Extract content
-        const text = extractMainContent(doc);
-        
-        // More thorough content validation
-        if (!text || text.length < 200) {  // Increased minimum length
-          throw new Error('Could not find meaningful content. The page might be empty or require authentication.');
-        }
-
-        // Additional validation for extracted content
-        const contentWords = text.split(/\s+/).length;
-        if (contentWords < 50) {  // Ensure we have enough words
-          throw new Error('The extracted content is too short to be meaningful. Try a different URL.');
-        }
-        
-        // Clean up the text
-        const cleanedText = text
-          .replace(/\s+/g, ' ')
-          .replace(/\b(Accept|Cookie|Menu|Navigation|Search|Skip to content)\b/gi, '')
-          .trim();
-
-        // Get page title with fallbacks
-        let title = doc.querySelector('title')?.textContent?.trim() ||
-                    doc.querySelector('h1')?.textContent?.trim() ||
-                    doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ||
-                    new URL(url).hostname;
-
-        // Clean up title
-        title = title
-          .replace(/\s*\|\s*.*$/, '')  // Remove site name after |
-          .replace(/\s*-\s*.*$/, '')   // Remove site name after -
-          .trim();
-
-        setProcessingStatus('Processing content...');
-        setProcessingProgress(50);
-
-        await processContent(cleanedText, title, 'url' as const);
-        toast.success('URL processed successfully');
-      } catch (error: any) {
-        console.error('Error processing URL:', error);
-        let errorMessage = error.message;
-        
-        // Make error messages more user-friendly
-        if (errorMessage.includes('Failed to fetch')) {
-          errorMessage = 'Unable to access the webpage. The site might be blocking access or require authentication.';
-        } else if (errorMessage.includes('No meaningful content found')) {
-          errorMessage = 'Could not find article content. Try using a direct link to an article page.';
-        }
-        
-        toast.error(errorMessage);
-      } finally {
-        setIsProcessing(false);
-        setProcessingProgress(0);
-        setProcessingStatus('');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch content: ${response.status}`);
       }
+
+      const html = await response.text();
+
+      // Validate content
+      if (!html || html.length < 100) {
+        throw new Error('The webpage returned empty or invalid content');
+      }
+
+      setProcessingStatus('Extracting content...');
+      setProcessingProgress(30);
+      
+      // Parse HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Extract content
+      const text = extractMainContent(doc);
+      
+      if (!text || text.length < 200) {
+        throw new Error('Could not find meaningful content on the page');
+      }
+
+      // Clean up the text
+      const cleanedText = text
+        .replace(/\s+/g, ' ')
+        .replace(/\b(Accept|Cookie|Menu|Navigation|Search|Skip to content)\b/gi, '')
+        .trim();
+
+      // Get page title
+      let title = doc.querySelector('title')?.textContent?.trim() ||
+                  doc.querySelector('h1')?.textContent?.trim() ||
+                  doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ||
+                  new URL(url).hostname;
+
+      // Clean up title
+      title = title
+        .replace(/\s*\|\s*.*$/, '')
+        .replace(/\s*-\s*.*$/, '')
+        .trim();
+
+      setProcessingStatus('Processing content...');
+      setProcessingProgress(50);
+
+      await processContent(cleanedText, title, 'url' as const);
+      toast.success('URL processed successfully', { id: toastId });
+      setIsUrlDialogOpen(false);
+
     } catch (error: any) {
       console.error('Error processing URL:', error);
       let errorMessage = error.message;
@@ -436,11 +420,15 @@ export default function Dashboard() {
       // Make error messages more user-friendly
       if (errorMessage.includes('Failed to fetch')) {
         errorMessage = 'Unable to access the webpage. The site might be blocking access or require authentication.';
-      } else if (errorMessage.includes('No meaningful content found')) {
+      } else if (errorMessage.includes('Could not find meaningful content')) {
         errorMessage = 'Could not find article content. Try using a direct link to an article page.';
       }
       
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: toastId });
+    } finally {
+      setIsProcessing(false);
+      setProcessingProgress(0);
+      setProcessingStatus('');
     }
   };
 
@@ -597,6 +585,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <FreePlanDialog 
+        isOpen={isFreePlanDialogOpen}
+        onClose={() => setIsFreePlanDialogOpen(false)}
+      />
       <LimitReachedDialog 
         isOpen={isLimitReachedDialogOpen}
         onClose={() => setIsLimitReachedDialogOpen(false)}
@@ -610,69 +602,156 @@ export default function Dashboard() {
         onMaximize={() => setIsProcessingMinimized(false)}
       />
       {/* Enhanced Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo and Brand */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
-                <BookOpen className="h-6 w-6 text-white" />
+      <header className="fixed w-full top-0 z-50 px-4">
+        <div className="max-w-7xl mx-auto mt-2">
+          <div className="rounded-2xl bg-white/90 backdrop-blur-xl border border-white/20 shadow-sm">
+            {/* Desktop Navbar */}
+            <div className="hidden md:flex px-6 h-20 justify-between items-center">
+              {/* Logo and Brand */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 flex items-center justify-center transform transition-all duration-200 group-hover:scale-105 group-hover:rotate-3 shadow-sm p-2">
+                  <img src="/notebook.png" alt="Notelo" className="w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold text-gray-900">
+                  Notelo
+                </span>
               </div>
-              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80">
-                Notelo
-              </span>
-            </motion.div>
 
-            {/* Enhanced Search Bar */}
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex-1 max-w-2xl mx-8"
-            >
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 transition-colors group-focus-within:text-primary" />
-                <input
-                  type="text"
-                  placeholder="Search your documents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none bg-gray-50 focus:bg-white"
-                />
+              {/* Search Bar */}
+              <div className="flex-1 max-w-xl px-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search documents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
               </div>
-            </motion.div>
 
-            {/* Navigation Items */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center gap-4"
-            >
-              <Link
-                to="/account"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-gray-900 transition-colors"
+              {/* Account and Logout */}
+              <div className="flex items-center gap-4">
+                <Link
+                  to="/account"
+                  className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Account</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Navbar */}
+            <div className="md:hidden px-6 h-16 flex justify-between items-center">
+              {/* Logo */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3"
               >
-                <User className="h-5 w-5" />
-                <span className="font-medium">Account</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors"
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 flex items-center justify-center transform transition-all duration-200 shadow-sm p-1.5">
+                  <img src="/notebook.png" alt="Notelo" className="w-5 h-5" />
+                </div>
+                <span className="text-lg font-bold text-gray-900">
+                  Notelo
+                </span>
+              </motion.div>
+
+              {/* Search and Menu Icons */}
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="flex items-center gap-3"
               >
-                <LogOut className="h-5 w-5" />
-                <span className="font-medium">Sign out</span>
-              </button>
-            </motion.div>
+                {/* Search Icon/Bar */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <Search className="w-5 h-5 text-gray-600" />
+                  </button>
+                  
+                  {/* Expandable Search Input */}
+                  <AnimatePresence>
+                    {isSearchOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: "250px" }}
+                        exit={{ opacity: 0, width: 0 }}
+                        className="absolute right-0 top-1/2 -translate-y-1/2"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Search documents..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-4 pr-10 py-2 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm"
+                          autoFocus
+                        />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Hamburger Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <Menu className="w-5 h-5 text-gray-600" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  <AnimatePresence>
+                    {isMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50"
+                      >
+                        <Link
+                          to="/account"
+                          className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <User className="w-4 h-4" />
+                          Account
+                        </Link>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-24">
         {/* Enhanced Time Saved Section */}
         {totalTimeSaved > 0 && (
           <motion.div
@@ -803,9 +882,9 @@ export default function Dashboard() {
                     <span className="text-sm font-medium text-gray-600">Efficiency</span>
                   </div>
                   <p className="text-lg font-bold text-gray-900">
-                    {documents.filter(doc => doc.summary).reduce((acc, doc) => 
+                    {(documents.filter(doc => doc.summary).reduce((acc, doc) => 
                       acc + calculateEfficiencyScore(doc.text_content, doc.summary || ''), 
-                      0) / (documents.filter(doc => doc.summary).length || 1)}x
+                      0) / (documents.filter(doc => doc.summary).length || 1)).toFixed(2)}x
                   </p>
                   <p className="text-sm text-gray-600">compression ratio</p>
                 </motion.div>
@@ -815,40 +894,37 @@ export default function Dashboard() {
         )}
 
         {/* Enhanced Upload Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-200"
-        >
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Add New Content</h2>
-              <p className="text-gray-600">Upload a file or add content from a URL</p>
+        {documents.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8 bg-white rounded-xl shadow-sm p-6 border border-gray-200"
+          >
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">Add New Content</h2>
+                <p className="text-gray-600">Upload a file or add content from a URL</p>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleFileButtonClick}
+                  className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#4B7BF5] text-white hover:bg-[#4B7BF5]/90 transition-colors"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="font-medium">Upload File</span>
+                </button>
+                <button
+                  onClick={handleUrlButtonClick}
+                  className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#F5A04B] text-white hover:bg-[#F5A04B]/90 transition-colors"
+                >
+                  <LinkIcon className="h-5 w-5" />
+                  <span className="font-medium">Add URL</span>
+                </button>
+              </div>
             </div>
-            <div className="flex gap-4">
-              <label className={`btn-primary flex items-center gap-2 px-6 py-3 rounded-xl ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <Upload className="h-5 w-5" />
-                <span className="font-medium">Upload File</span>
-                <input
-                  type="file"
-                  accept=".txt,.md,.pdf"
-                  onChange={handleFileUpload}
-                  disabled={isProcessing}
-                  className="hidden"
-                />
-              </label>
-              <button
-                onClick={handleUrlButtonClick}
-                disabled={isProcessing}
-                className={`btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <LinkIcon className="h-5 w-5" />
-                <span className="font-medium">Add URL</span>
-              </button>
-            </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* URL Input Dialog */}
         <URLInputDialog
@@ -1039,40 +1115,103 @@ export default function Dashboard() {
           </AnimatePresence>
         </div>
 
-        {/* Enhanced Empty State */}
-        {filteredDocuments.length === 0 && (
+        {/* Empty State */}
+        {documents.length === 0 && !searchQuery && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center"
+            className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-sm border border-gray-200 p-12"
           >
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-6">
-              <FileText className="h-8 w-8 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No documents found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery
-                ? "No documents match your search. Try a different query."
-                : "Upload a file or add a URL to get started with Notelo."}
-            </p>
-            <div className="flex items-center justify-center gap-4">
-              <label className="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl">
-                <Upload className="h-5 w-5" />
-                <span className="font-medium">Upload File</span>
-                <input
-                  type="file"
-                  accept=".txt,.md,.pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
+            <div className="max-w-lg mx-auto text-center">
+              {/* Empty State Icon */}
+              <div className="relative w-24 h-24 mx-auto mb-8">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.6 }}
+                  className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl"
                 />
-              </label>
-              <button
-                onClick={handleUrlButtonClick}
-                className="btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl"
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.6, delay: 0.1 }}
+                  className="absolute inset-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl"
+                />
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
+                  className="absolute inset-4 bg-white rounded-lg shadow-sm flex items-center justify-center"
+                >
+                  <FileText className="h-8 w-8 text-primary" />
+                </motion.div>
+              </div>
+
+              {/* Empty State Content */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
               >
-                <LinkIcon className="h-5 w-5" />
-                <span className="font-medium">Add URL</span>
-              </button>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                  {searchQuery
+                    ? "No matching documents found"
+                    : "Ready to start learning smarter?"}
+                </h3>
+                <p className="text-gray-600 mb-8">
+                  {searchQuery ? (
+                    "Try adjusting your search query or explore your other documents."
+                  ) : (
+                    "Upload any content - from research papers to YouTube videos - and let Notelo transform it into personalized study materials."
+                  )}
+                </p>
+              </motion.div>
+
+              {/* Action Buttons */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex items-center justify-center gap-4 mb-8"
+              >
+                <button
+                  onClick={handleFileButtonClick}
+                  className="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
+                >
+                  <Upload className="h-5 w-5" />
+                  <span className="font-medium">Upload File</span>
+                </button>
+                <button
+                  onClick={handleUrlButtonClick}
+                  className="btn-secondary flex items-center gap-2 px-6 py-3 rounded-xl hover:bg-gray-100 transition-all"
+                >
+                  <LinkIcon className="h-5 w-5" />
+                  <span className="font-medium">Add URL</span>
+                </button>
+              </motion.div>
+
+              {/* Quick Tips */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="grid grid-cols-2 gap-4 text-left max-w-lg mx-auto"
+              >
+                <div className="bg-white p-4 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-2 text-primary mb-2">
+                    <FileText className="h-4 w-4" />
+                    <span className="font-medium text-sm">Supported Files</span>
+                  </div>
+                  <p className="text-sm text-gray-600">PDF, TXT, and Markdown files for easy content import</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-2 text-primary mb-2">
+                    <Youtube className="h-4 w-4" />
+                    <span className="font-medium text-sm">Web Content</span>
+                  </div>
+                  <p className="text-sm text-gray-600">Articles, blog posts, and YouTube videos supported</p>
+                </div>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -1085,9 +1224,9 @@ export default function Dashboard() {
         documentsCount={documentsWithSummary}
         averageTimeSaved={averageTimeSaved}
         efficiencyScore={
-          documents.filter(doc => doc.summary).reduce((acc, doc) => 
+          Number((documents.filter(doc => doc.summary).reduce((acc, doc) => 
             acc + calculateEfficiencyScore(doc.text_content, doc.summary || ''), 
-            0) / (documents.filter(doc => doc.summary).length || 1)
+            0) / (documents.filter(doc => doc.summary).length || 1)).toFixed(2))
         }
       />
     </div>

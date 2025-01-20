@@ -34,7 +34,7 @@ export default function ShareStatsOverlay({
     let text = `🚀 My Notelo Stats:\n\n`;
     text += `📚 ${documentsCount} documents summarized\n`;
     text += `⏱️ ${timeMetrics.hours}h ${timeMetrics.minutes}m saved\n`;
-    text += `⚡ ${efficiencyScore}x faster reading\n\n`;
+    text += `⚡ ${efficiencyScore.toFixed(2)}x faster reading\n\n`;
     text += `Try Notelo today! #ProductivityBoost #AI`;
     return text;
   };
@@ -167,7 +167,7 @@ export default function ShareStatsOverlay({
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-gray-500">Efficiency</p>
-                    <p className="text-lg font-bold text-gray-900">{Math.round(efficiencyScore * 10) / 10}x</p>
+                    <p className="text-lg font-bold text-gray-900">{efficiencyScore.toFixed(2)}x</p>
                   </div>
                 </div>
                 <div className="pt-4 text-center">

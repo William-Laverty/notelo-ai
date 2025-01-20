@@ -30,6 +30,63 @@ export default function MockupGenerator() {
   
   const mockupRef = useRef<HTMLDivElement>(null);
 
+  // Function to convert image to base64
+  const getImageBase64 = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result;
+        if (typeof result === 'string') {
+          resolve(result.split(',')[1]);
+        } else {
+          reject(new Error('Failed to convert image to base64'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // Function to generate SVG with embedded image
+  const generateSVG = (base64Image: string) => `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#EBF4FF" />
+          <stop offset="50%" stop-color="#F0F7FF" />
+          <stop offset="100%" stop-color="#F3E8FF" />
+        </linearGradient>
+        <clipPath id="rounded">
+          <rect width="40" height="40" rx="8" />
+        </clipPath>
+      </defs>
+      <g clip-path="url(#rounded)">
+        <rect width="40" height="40" fill="url(#gradient)" />
+        <image href="data:image/png;base64,${base64Image}" x="8" y="8" width="24" height="24" />
+      </g>
+    </svg>`;
+
+  // Function to download SVG
+  const downloadLogo = async () => {
+    try {
+      const base64Image = await getImageBase64('/notelo-logo.png');
+      const svgContent = generateSVG(base64Image);
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'notelo-logo.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating logo:', error);
+    }
+  };
+
   const downloadMockup = async () => {
     if (mockupRef.current) {
       const canvas = await html2canvas(mockupRef.current, {
@@ -537,6 +594,22 @@ export default function MockupGenerator() {
           <p className="text-gray-600">Generate high-quality mockups for different pages and formats</p>
         </div>
 
+        {/* Logo Downloads Section */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">Logo Downloads</h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={downloadLogo}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-100 via-blue-50 to-purple-100 hover:shadow-md transition-shadow duration-200 flex items-center gap-2 border border-gray-200"
+            >
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 flex items-center justify-center p-1">
+                <img src="/notelo-logo.png" alt="Logo Preview" className="w-4 h-4" />
+              </div>
+              <span className="text-gray-700">Download Logo with Background</span>
+            </button>
+          </div>
+        </div>
+
         {/* Controls */}
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
           <div className="flex justify-between items-center">
@@ -604,7 +677,7 @@ export default function MockupGenerator() {
 
               <div className="flex items-center gap-2">
                 <a
-                  href="/logo-dark.svg"
+                  href="/notelo-logo.svg"
                   download
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >

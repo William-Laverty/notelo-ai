@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
@@ -19,8 +19,8 @@ export default function Navbar() {
         <div className="rounded-2xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-sm">
           <div className="px-6 h-16 flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-2 group">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center transform transition-all duration-200 group-hover:scale-105 group-hover:rotate-3">
-                <BookOpen className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 via-blue-50 to-purple-100 flex items-center justify-center transform transition-all duration-200 group-hover:scale-105 group-hover:rotate-3 shadow-sm p-2">
+                <img src="/notebook.png" alt="Notelo" className="w-6 h-6" />
               </div>
               <span className="text-xl font-bold text-gray-900">
                 Notelo

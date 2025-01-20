@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" href="/notelo-logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/notelo-logo.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/notelo-logo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/notelo-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
@@ -32,21 +35,28 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
+        "@type": "WebApplication",
         "name": "Notelo AI",
+        "alternateName": "Notelo",
         "applicationCategory": "EducationalApplication",
         "description": "Transform any digital content into personalized study materials instantly. Create AI-powered summaries, quizzes, flashcards, and audio notes to enhance your learning experience.",
         "operatingSystem": "Web",
+        "url": "https://www.notelo-ai.com",
+        "image": "https://www.notelo-ai.com/images/og-image.png",
+        "screenshot": "https://www.notelo-ai.com/images/app-screenshot.png",
         "offers": {
           "@type": "Offer",
           "price": "5.99",
           "priceCurrency": "USD",
-          "priceValidUntil": "2025-12-31"
+          "priceValidUntil": "2025-12-31",
+          "availability": "https://schema.org/InStock"
         },
         "aggregateRating": {
           "@type": "AggregateRating",
           "ratingValue": "4.8",
-          "ratingCount": "150"
+          "ratingCount": "150",
+          "bestRating": "5",
+          "worstRating": "1"
         },
         "featureList": [
           "AI-powered content transformation",
@@ -55,7 +65,46 @@
           "Audio note generation",
           "Smart summarization",
           "Multi-format learning tools"
-        ]
+        ],
+        "applicationSubCategory": "Study Tools",
+        "downloadUrl": "https://www.notelo-ai.com",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "softwareVersion": "1.0.0",
+        "keywords": "AI study tools, learning assistant, content summarization, flashcard generator, quiz generator, study materials",
+        "creator": {
+          "@type": "Organization",
+          "name": "Notelo AI",
+          "url": "https://www.notelo-ai.com",
+          "logo": "https://www.notelo-ai.com/notelo-logo.png",
+          "sameAs": [
+            "https://twitter.com/noteloai",
+            "https://www.linkedin.com/company/notelo-ai",
+            "https://www.facebook.com/noteloai"
+          ]
+        }
+      }
+    </script>
+
+    <!-- Additional Organization Schema -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Notelo AI",
+        "url": "https://www.notelo-ai.com",
+        "logo": "https://www.notelo-ai.com/notelo-logo.png",
+        "description": "Notelo AI is an innovative educational technology company providing AI-powered study tools to help students learn more effectively.",
+        "foundingDate": "2024",
+        "email": "support@notelo-ai.com",
+        "sameAs": [
+          "https://twitter.com/noteloai",
+          "https://www.linkedin.com/company/notelo-ai",
+          "https://www.facebook.com/noteloai"
+        ],
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "US"
+        }
       }
     </script>
 
