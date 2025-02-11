@@ -18,6 +18,7 @@ import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Payment from './pages/Payment';
+import Upgrade from './pages/Upgrade';
 import Footer from './components/layout/Footer';
 import Reviews from './components/Reviews';
 import ScrollToTop from './components/ScrollToTop';
@@ -25,6 +26,8 @@ import PageLayout from './components/layout/PageLayout';
 import MockupGenerator from './pages/MockupGenerator';
 import { Analytics } from "@vercel/analytics/react";
 import Admin from './pages/Admin';
+import Banner from './components/Banner';
+import AuthCallback from './pages/auth/Callback';
 
 interface PrivateRouteProps {
   children?: React.ReactNode;
@@ -53,9 +56,9 @@ export default function AppRoutes() {
             <Navbar />
             <Hero />
             <FeaturesComponent />
-            <Reviews />
             <PricingComponent />
             <Footer />
+            <Banner />
           </>
         } />
 
@@ -68,6 +71,11 @@ export default function AppRoutes() {
         <Route path="/pricing" element={
           <PageLayout>
             <Pricing />
+          </PageLayout>
+        } />
+        <Route path="/upgrade" element={
+          <PageLayout>
+            <Upgrade />
           </PageLayout>
         } />
         <Route path="/about" element={
@@ -120,6 +128,9 @@ export default function AppRoutes() {
             </PageLayout>
           </PrivateRoute>
         } />
+
+        {/* Auth Callback Route */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
     </>
   );

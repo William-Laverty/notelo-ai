@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { verifyPayPalSubscription } from '../api/paypal';
 import { toast } from 'react-hot-toast';
+import { supabase } from '../lib/supabase-client';
 
 const features = [
   {
@@ -46,7 +47,7 @@ const guarantees = [
 ];
 
 // PayPal Button wrapper component for better loading handling
-function PayPalButtonWrapper() {
+function PayPalButtonWrapper({ planId = 'P-2YL98489JN785131BM6DWIHQ' }) {
   const [{ isPending, isRejected }] = usePayPalScriptReducer();
   const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
@@ -124,7 +125,7 @@ function PayPalButtonWrapper() {
       createSubscription={(data, actions) => {
         console.log('Creating subscription...');
         return actions.subscription.create({
-          plan_id: 'P-2YL98489JN785131BM6DWIHQ'
+          plan_id: planId
         });
       }}
       onApprove={handleApprove}
@@ -143,11 +144,23 @@ function PayPalButtonWrapper() {
 export default function Payment() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [isPromoValid, setIsPromoValid] = useState(false);
 
   if (!user) {
     navigate('/login');
     return null;
   }
+
+  const handlePromoSubmit = () => {
+    if (promoCode.toUpperCase() === 'STUDYSMART') {
+      setIsPromoValid(true);
+      toast.success('Promo code applied successfully!');
+    } else {
+      toast.error('Invalid promo code');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-primary/5 to-gray-50">
@@ -323,6 +336,46 @@ export default function Payment() {
                   </div>
                 </div>
 
+                {/* Promo Code Section */}
+                <div className="mb-8">
+                  {!showPromoInput ? (
+                    <button
+                      onClick={() => setShowPromoInput(true)}
+                      className="text-primary hover:text-primary/80 text-sm font-medium"
+                    >
+                      Have a promo code?
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value)}
+                          placeholder="Enter promo code"
+                          className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <button
+                          onClick={handlePromoSubmit}
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowPromoInput(false);
+                          setPromoCode('');
+                          setIsPromoValid(false);
+                        }}
+                        className="text-gray-500 hover:text-gray-700 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* What You're Getting */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">What You're Getting</h3>
@@ -405,9 +458,21 @@ export default function Payment() {
                   intent: "subscription",
                   "data-sdk-integration-source": "button-factory"
                 }}>
-                  <div id="paypal-button-container-P-2YL98489JN785131BM6DWIHQ">
-                    <PayPalButtonWrapper />
-                  </div>
+                  {isPromoValid ? (
+                    <div key="promo-button" className="transition-opacity">
+                      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span className="text-green-700">Promo code "STUDYSMART" applied!</span>
+                        </div>
+                      </div>
+                      <PayPalButtonWrapper planId="P-1EU83413SC4417051M6NBFTQ" />
+                    </div>
+                  ) : (
+                    <div key="regular-button">
+                      <PayPalButtonWrapper planId="P-2YL98489JN785131BM6DWIHQ" />
+                    </div>
+                  )}
                 </PayPalScriptProvider>
 
                 {/* Money-back Guarantee */}

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 // Helper functions
 async function generateSummary(text: string) {
   const response = await openai.chat.completions.create({
-    model: "gpt-3",
+    model: "gpt-3.5-turbo",
     messages: [
       {
         role: "system",
@@ -56,7 +56,7 @@ async function generateSummary(text: string) {
 
 async function generateQuiz(text: string) {
   const response = await openai.chat.completions.create({
-    model: "gpt-3",
+    model: "gpt-3.5-turbo",
     messages: [
       {
         role: "system",

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Github, Twitter } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -20,13 +20,7 @@ export default function Footer() {
             <p className="text-gray-600">
               Transform your reading experience with AI-powered summaries and insights.
             </p>
-            <div className="flex items-center gap-4">
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600">
-                <Github className="w-5 h-5" />
-              </a>
+            <div className="flex items-center">
               <a href="mailto:contact@notelo.com" className="text-gray-400 hover:text-gray-600">
                 <Mail className="w-5 h-5" />
               </a>

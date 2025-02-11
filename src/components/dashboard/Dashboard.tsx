@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase-client';
-import { generateSummary, generateQuiz, generateTitle, generateCardDescription } from '../../lib/ai-service';
+import { generateSummary, generateQuiz, generateTitle, generateCardDescription, generateDemoSummary } from '../../lib/ai-service';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, LogOut, Search, Upload, FileText, Youtube, Link as LinkIcon, Clock, Calendar, Hash, MoreVertical, ChevronRight, User, Trash2, Timer, TrendingUp, Zap, Target, Award, Sparkles, Book, Share2, Menu } from 'lucide-react';
@@ -12,6 +12,44 @@ import URLInputDialog from '../url/URLInputDialog';
 import ShareStatsOverlay from '../share/ShareStatsOverlay';
 import LimitReachedDialog from '../upgrade/LimitReachedDialog';
 import FreePlanDialog from '../upgrade/FreePlanDialog';
+import Onboarding from '../onboarding/Onboarding';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+
+// Function to initialize PDF.js worker
+const initPdfWorker = async () => {
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    const pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.entry');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+  }
+};
+
+// Function to load PDF content
+const loadPdfContent = async (file: File, setProcessingStatus: (status: string) => void, setProcessingProgress: (progress: number) => void): Promise<string> => {
+  try {
+    await initPdfWorker();
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    
+    const textContent: string[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      setProcessingStatus(`Extracting page ${i} of ${pdf.numPages}...`);
+      setProcessingProgress(20 + (i / pdf.numPages) * 30);
+      
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => item.str)
+        .join(' ');
+      textContent.push(pageText);
+    }
+    
+    return textContent.join('\n\n');
+  } catch (error) {
+    console.error('Error in loadPdfContent:', error);
+    throw new Error('Failed to extract PDF content. Please try again.');
+  }
+};
 
 interface QuizQuestion {
   question: string;
@@ -25,7 +63,8 @@ interface Document {
   text_content: string;
   summary?: string;
   created_at: string;
-  content_type: 'text' | 'url' | 'youtube';
+  content_type: 'pdf' | 'video' | 'url';
+  type: 'text' | 'youtube' | 'url';
   user_id: string;
   quiz_questions?: QuizQuestion[];
 }
@@ -139,6 +178,7 @@ export default function Dashboard() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFreePlanDialogOpen, setIsFreePlanDialogOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -160,6 +200,31 @@ export default function Dashboard() {
     if (user) {
       fetchProfile();
     }
+  }, [user]);
+
+  // Check onboarding status when component mounts
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (profile && !profile.onboarding_completed) {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+      }
+    };
+
+    checkOnboardingStatus();
   }, [user]);
 
   const fetchDocuments = async () => {
@@ -290,34 +355,107 @@ export default function Dashboard() {
     const toastId = toast.loading('Processing your document...');
 
     try {
-      const reader = new FileReader();
+      let text: string;
       
-      reader.onerror = (error) => {
-        console.error('FileReader error:', error);
-        toast.error('Error reading file: ' + error.toString(), { id: toastId });
-        setIsProcessing(false);
-      };
+      if (file.type === 'application/pdf') {
+        // Handle PDF files
+        setProcessingStatus('Extracting PDF content...');
+        setProcessingProgress(20);
+        text = await loadPdfContent(file, setProcessingStatus, setProcessingProgress);
+      } else {
+        // For now, we don't support other file types
+        throw new Error('Only PDF files are supported at this time.');
+      }
 
-      reader.onload = async (event) => {
-        try {
-          const text = event.target?.result as string;
-          if (!text || text.trim().length === 0) {
-            throw new Error('File is empty');
+      if (!text || text.trim().length === 0) {
+        throw new Error('File is empty');
+      }
+
+      console.log('File content length:', text.length);
+      
+      // Create document
+      const { data: document, error: docError } = await supabase
+        .from('documents')
+        .insert([
+          {
+            title: file.name,
+            text_content: text,
+            content_type: 'pdf',
+            type: 'text',
+            user_id: user?.id,
           }
-          console.log('File content length:', text.length);
-          await processContent(text, file.name, 'text' as const);
-        } catch (error: any) {
-          console.error('Error processing file content:', error);
-          toast.error(`Error processing file: ${error.message}`, { id: toastId });
-          setIsProcessing(false);
-        }
-      };
+        ])
+        .select()
+        .single();
 
-      reader.readAsText(file);
+      if (docError) throw docError;
+      if (!document) throw new Error('No document returned from insert');
+
+      // Update documents list
+      setDocuments(prev => [document, ...(prev || [])]);
+      
+      // Generate summary
+      setProcessingStatus('Generating summary...');
+      setProcessingProgress(50);
+      
+      const summary = await generateSummary(text);
+      
+      // Update document with summary
+      const { error: summaryError } = await supabase
+        .from('documents')
+        .update({ summary })
+        .eq('id', document.id);
+
+      if (summaryError) throw summaryError;
+
+      // Update usage count in profiles table
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('usage_count')
+        .eq('id', user?.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching profile:', fetchError);
+        throw fetchError;
+      }
+
+      const currentCount = typeof currentProfile?.usage_count === 'number' ? currentProfile.usage_count : 0;
+      const newCount = currentCount + 1;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          usage_count: newCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (profileError) {
+        console.error('Error updating usage count:', profileError);
+        throw profileError;
+      }
+
+      // Refresh profile data in component state
+      await fetchProfile();
+
+      // Update local state
+      setDocuments(prev => prev?.map(doc => 
+        doc.id === document.id ? { ...doc, summary } : doc
+      ));
+
+      toast.success('Document processed successfully', { id: toastId });
     } catch (error: any) {
       console.error('Error in handleFileUpload:', error);
-      toast.error(`Failed to process document: ${error.message}`, { id: toastId });
+      if (error.code === '23514') {
+        toast.error('Only PDF files are supported at this time.', { id: toastId });
+      } else {
+        toast.error(`Failed to process document: ${error.message}`, { id: toastId });
+      }
+    } finally {
       setIsProcessing(false);
+      setProcessingProgress(0);
+      setProcessingStatus('');
     }
   };
 
@@ -354,62 +492,18 @@ export default function Dashboard() {
       setProcessingStatus('Fetching webpage content...');
       setProcessingProgress(10);
 
-      // Use a more reliable proxy service
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
+      // Use generateDemoSummary to process the URL
+      const content = await generateDemoSummary(url);
+      const title = new URL(url).hostname;
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch content: ${response.status}`);
-      }
-
-      const html = await response.text();
-
-      // Validate content
-      if (!html || html.length < 100) {
-        throw new Error('The webpage returned empty or invalid content');
-      }
-
-      setProcessingStatus('Extracting content...');
-      setProcessingProgress(30);
-      
-      // Parse HTML
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      // Extract content
-      const text = extractMainContent(doc);
-      
-      if (!text || text.length < 200) {
+      if (!content || content.length < 200) {
         throw new Error('Could not find meaningful content on the page');
       }
-
-      // Clean up the text
-      const cleanedText = text
-        .replace(/\s+/g, ' ')
-        .replace(/\b(Accept|Cookie|Menu|Navigation|Search|Skip to content)\b/gi, '')
-        .trim();
-
-      // Get page title
-      let title = doc.querySelector('title')?.textContent?.trim() ||
-                  doc.querySelector('h1')?.textContent?.trim() ||
-                  doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() ||
-                  new URL(url).hostname;
-
-      // Clean up title
-      title = title
-        .replace(/\s*\|\s*.*$/, '')
-        .replace(/\s*-\s*.*$/, '')
-        .trim();
 
       setProcessingStatus('Processing content...');
       setProcessingProgress(50);
 
-      await processContent(cleanedText, title, 'url' as const);
+      await processContent(content, title, 'url' as const);
       toast.success('URL processed successfully', { id: toastId });
       setIsUrlDialogOpen(false);
 
@@ -418,7 +512,7 @@ export default function Dashboard() {
       let errorMessage = error.message;
       
       // Make error messages more user-friendly
-      if (errorMessage.includes('Failed to fetch')) {
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Demo summary generation failed')) {
         errorMessage = 'Unable to access the webpage. The site might be blocking access or require authentication.';
       } else if (errorMessage.includes('Could not find meaningful content')) {
         errorMessage = 'Could not find article content. Try using a direct link to an article page.';
@@ -435,9 +529,16 @@ export default function Dashboard() {
   const processContent = async (
     content: string,
     originalTitle: string,
-    content_type: 'text' | 'url' | 'youtube'
+    content_type: 'pdf' | 'video' | 'url'
   ) => {
     try {
+      // Map content_type to type
+      const typeMap = {
+        pdf: 'text',
+        video: 'youtube',
+        url: 'url'
+      } as const;
+
       // Create document
       const { data: document, error: docError } = await supabase
         .from('documents')
@@ -445,7 +546,8 @@ export default function Dashboard() {
           {
             title: originalTitle,
             text_content: content,
-            content_type: content_type,
+            content_type,
+            type: typeMap[content_type],
             user_id: user?.id,
           }
         ])
@@ -1229,6 +1331,20 @@ export default function Dashboard() {
             0) / (documents.filter(doc => doc.summary).length || 1)).toFixed(2))
         }
       />
+
+      {/* Onboarding Modal */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-white"
+          >
+            <Onboarding onComplete={() => setShowOnboarding(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
@@ -54,8 +54,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) throw authError;
+
+    if (!authData.user) {
+      throw new Error('No user data returned after signup');
+    }
+
+    // Create profile for the user
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: authData.user.id,
+          email: authData.user.email,
+          created_at: new Date().toISOString(),
+          study_hours: 0,
+          content_preference: 'text',
+          study_goal: 'save_time',
+          onboarding_completed: false,
+          updated_at: new Date().toISOString(),
+          subscription_status: 'free',
+          subscription_tier: 'free',
+          usage_count: 0
+        }
+      ]);
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+      throw new Error('Failed to create user profile');
+    }
+
+    // Track signup completion with Facebook Pixel
+    try {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        console.log('Tracking Facebook Pixel CompleteRegistration event...');
+        
+        // Track with additional parameters
+        (window as any).fbq('track', 'CompleteRegistration', {
+          status: true,
+          registration_method: 'email',
+          user_type: 'free',
+        });
+        
+        console.log('Facebook Pixel CompleteRegistration event tracked successfully');
+      } else {
+        console.warn('Facebook Pixel not available for tracking');
+      }
+    } catch (error) {
+      console.error('Facebook Pixel tracking error:', error);
+    }
+
+    return authData;
   };
 
   const signInWithGoogle = async () => {

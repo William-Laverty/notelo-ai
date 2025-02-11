@@ -15,7 +15,7 @@ export const passwordSchema = z
   .min(8, 'Password must be at least 8 characters')
   .max(100, 'Password is too long')
   .regex(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]+$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w\d@$!%*?&#_\-+=[\]{}|\\:;"'<>,.~`^()]+$/,
     'Password must contain at least one uppercase letter, one lowercase letter, and one number'
   );
 
@@ -23,8 +23,8 @@ export const passwordSchema = z
 export const sanitizeInput = (input: string): string => {
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .slice(0, 255); // Limit length
+    .replace(/[<>]/g, '') 
+    .slice(0, 255); 
 };
 
 interface ValidationResult<T> {

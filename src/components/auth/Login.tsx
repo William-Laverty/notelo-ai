@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
-import { validateEmail, validatePassword } from '../../utils/validation';
+import { motion } from 'framer-motion';
+import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { supabase, signInWithGoogle } from '../../lib/supabase-client';
+import PageLayout from '../../components/layout/PageLayout';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,11 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState('');
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get the redirect path from URL parameters
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const validateForm = () => {
     const emailValidation = validateEmail(email);
@@ -45,80 +51,78 @@ export default function Login() {
     setIsLoading(true);
     
     try {
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          setErrorMessage('Invalid email or password. Please try again.');
-        } else if (error.message.includes('Too many login attempts')) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage('Failed to sign in. Please try again later.');
-        }
-        setShowError(true);
-        return;
-      }
-      
-      navigate('/dashboard');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast.success('Successfully logged in!');
+      navigate(redirectTo);
     } catch (error: any) {
-      setErrorMessage(error.message);
-      setShowError(true);
+      console.error('Login error:', error);
+      toast.error(error.message || 'Failed to sign in');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) throw error;
+      // The redirect will happen automatically
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      toast.error('Failed to sign in with Google');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-primary/5 flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full"
-      >
-        {/* Logo and Welcome */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-primary hover:opacity-80 transition-opacity mb-6">
-            <BookOpen className="h-8 w-8" />
-            <span className="text-2xl font-bold">Notelo</span>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h1>
-          <p className="text-gray-600">Sign in to continue learning</p>
+    <PageLayout includeFooter={false}>
+      <div className="relative min-h-screen flex items-center justify-center p-4 pt-24">
+        {/* Base gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white to-blue-50/30" />
+
+        {/* Animated gradient layers */}
+        <div className="absolute inset-0">
+          {/* Primary gradient layer */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-primary/10 to-violet-400/20 animate-gradient-slow blur-[100px]" />
+          
+          {/* Secondary gradient layer */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/10 via-blue-400/10 to-primary/10 mix-blend-soft-light animate-gradient-slow-reverse blur-[80px]" />
+          
+          {/* Accent gradient layer */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-violet-500/10 animate-gradient-slow-delay blur-[120px]" />
+          
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-white/30 mix-blend-overlay animate-shimmer blur-[60px]" />
         </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 backdrop-blur-sm backdrop-filter">
-          <AnimatePresence>
-            {showError && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4"
-              >
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-red-800">Sign in failed</h3>
-                    <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md relative"
+        >
+          {/* Logo and Welcome */}
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">Welcome back</h1>
+            <p className="text-sm sm:text-base text-gray-600">Sign in to continue learning</p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-gray-400" />
-                Email
-              </label>
-              <div className="relative">
+          {/* Login Form */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Mail className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-400" />
+                  Email
+                </label>
                 <input
                   type="email"
                   required
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.email ? 'border-red-500 bg-red-50' : 'border-gray-200'
-                  } focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none`}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm sm:text-base"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => {
@@ -127,33 +131,17 @@ export default function Login() {
                     setShowError(false);
                   }}
                 />
-                <AnimatePresence>
-                  {errors.email && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-1 bg-red-100 text-red-700 text-sm px-2 py-1 rounded"
-                    >
-                      {errors.email}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-gray-400" />
-                Password
-              </label>
-              <div className="relative">
+              <div className="space-y-1">
+                <label className="text-xs sm:text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Lock className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-400" />
+                  Password
+                </label>
                 <input
                   type="password"
                   required
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    errors.password ? 'border-red-500 bg-red-50' : 'border-gray-200'
-                  } focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none`}
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm sm:text-base"
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => {
@@ -162,92 +150,84 @@ export default function Login() {
                     setShowError(false);
                   }}
                 />
-                <AnimatePresence>
-                  {errors.password && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-1 bg-red-100 text-red-700 text-sm px-2 py-1 rounded"
-                    >
-                      {errors.password}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
-                <span className="text-gray-600">Remember me</span>
-              </label>
-              <Link 
-                to="/forgot-password" 
-                className="text-primary hover:text-primary/80 transition-colors hover:bg-primary/5 px-3 py-2 rounded-lg"
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
+                  <span className="text-xs sm:text-sm text-gray-600">Remember me</span>
+                </label>
+                <Link to="/forgot-password" className="text-xs sm:text-sm text-primary hover:text-primary/80 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                type="submit"
+                disabled={isLoading}
+                className={`w-full py-2.5 sm:py-3 px-4 rounded-lg bg-primary text-white text-sm sm:text-base font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                Forgot password?
-              </Link>
+                {isLoading ? (
+                  <>
+                    <div className="w-4 sm:w-5 h-4 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign in
+                    <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+
+            {/* Google Sign In Button */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white hover:bg-gray-50 transition-colors duration-200"
+                disabled={isLoading}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-gray-700">
+                  Sign in with Google
+                </span>
+              </button>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              type="submit"
-              disabled={isLoading}
-              className={`w-full py-3 px-4 rounded-lg bg-primary text-white font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  Sign in
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </motion.button>
-          </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-primary hover:text-primary/80 transition-colors font-medium">
-                Sign up
-              </Link>
-            </p>
+            <div className="mt-6 sm:mt-8 text-center">
+              <p className="text-xs sm:text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link to="/signup" className="text-primary hover:text-primary/80 transition-colors font-medium">
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Social Proof */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">Trusted by students and professionals worldwide</p>
-          <div className="mt-4 flex justify-center gap-8">
-            <motion.img 
-              whileHover={{ scale: 1.05 }}
-              src="https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=50&h=50&fit=crop&crop=faces&auto=format&q=80" 
-              className="w-8 h-8 rounded-full shadow-md hover:shadow-lg transition-shadow cursor-pointer" 
-              alt="University 1" 
-            />
-            <motion.img 
-              whileHover={{ scale: 1.05 }}
-              src="https://images.unsplash.com/photo-1562774053-701939374585?w=50&h=50&fit=crop&crop=faces&auto=format&q=80" 
-              className="w-8 h-8 rounded-full shadow-md hover:shadow-lg transition-shadow cursor-pointer" 
-              alt="University 2" 
-            />
-            <motion.img 
-              whileHover={{ scale: 1.05 }}
-              src="https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=50&h=50&fit=crop&crop=faces&auto=format&q=80" 
-              className="w-8 h-8 rounded-full shadow-md hover:shadow-lg transition-shadow cursor-pointer" 
-              alt="University 3" 
-            />
-          </div>
-        </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </PageLayout>
   );
 }

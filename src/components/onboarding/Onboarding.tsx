@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Clock, BookOpen, Brain, ArrowRight, CheckCircle2, Sparkles, Target, Zap, Star, Rocket, Timer } from 'lucide-react';
@@ -11,6 +11,10 @@ interface OnboardingData {
   studyHours: number;
   contentTypes: string[];
   goal: 'better_grades' | 'save_time' | 'deeper_understanding' | 'exam_prep';
+}
+
+interface OnboardingProps {
+  onComplete?: () => void;
 }
 
 const contentTypeOptions = [
@@ -116,17 +120,139 @@ const goalBenefits = {
   }
 };
 
-export default function Onboarding() {
-  const [step, setStep] = useState(1);
+export default function Onboarding({ onComplete }: OnboardingProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [studyGoal, setStudyGoal] = useState<string>('save_time');
+  const [studyHours, setStudyHours] = useState<number>(2);
+  const [contentPreference, setContentPreference] = useState<string>('text');
+  const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     fullName: '',
     studyHours: 5,
     contentTypes: ['textbooks'],
     goal: 'save_time',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
-  const navigate = useNavigate();
+
+  // Load saved onboarding state
+  useEffect(() => {
+    const loadOnboardingState = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('onboarding_page, study_goal, study_hours, content_preference')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (profile) {
+          setCurrentStep(profile.onboarding_page || 1);
+          setStudyGoal(profile.study_goal || 'save_time');
+          setStudyHours(profile.study_hours || 2);
+          setContentPreference(profile.content_preference || 'text');
+        }
+      } catch (error) {
+        console.error('Error loading onboarding state:', error);
+      }
+    };
+
+    loadOnboardingState();
+  }, [user]);
+
+  // Save current step to Supabase
+  const saveOnboardingProgress = async (step: number) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          onboarding_page: step,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving onboarding progress:', error);
+    }
+  };
+
+  const handleNext = async () => {
+    const nextStep = currentStep + 1;
+    
+    // Save name to Supabase when completing step 1
+    if (currentStep === 1) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            full_name: data.fullName,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user?.id);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error saving name:', error);
+        toast.error('Failed to save your name');
+        return;
+      }
+    }
+
+    setCurrentStep(nextStep);
+    await saveOnboardingProgress(nextStep);
+  };
+
+  const handleBack = async () => {
+    const prevStep = currentStep - 1;
+    setCurrentStep(prevStep);
+    await saveOnboardingProgress(prevStep);
+  };
+
+  const handleComplete = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Update profile with all onboarding data
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          study_goal: studyGoal,
+          study_hours: studyHours,
+          content_preference: contentPreference,
+          onboarding_completed: true,
+          onboarding_page: 1, // Reset for next time if needed
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+
+      // Verify the update
+      const { data: profile, error: verifyError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (verifyError || !profile) {
+        throw new Error('Failed to verify profile update');
+      }
+
+      onComplete?.(); // Call onComplete if provided
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to save preferences');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const calculateTimeSaved = () => {
     // Estimate time saved based on study hours
@@ -136,56 +262,7 @@ export default function Onboarding() {
   };
 
   const handleContinueFree = async () => {
-    await handleSubmit();
-  };
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      if (!user?.id) throw new Error('No user ID found');
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: data.fullName,
-          study_hours: data.studyHours,
-          content_preference: data.contentTypes.join(','),
-          study_goal: data.goal,
-          onboarding_completed: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
-      
-      // Verify the update was successful
-      const { data: updatedProfile, error: verifyError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (verifyError || !updatedProfile || !updatedProfile.onboarding_completed) {
-        throw new Error('Failed to verify profile update');
-      }
-
-      toast.success('Profile updated successfully!');
-      navigate('/dashboard', { replace: true });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const nextStep = () => {
-    if (step < 5) {
-      setStep(step + 1);
-    }
+    await handleComplete();
   };
 
   const handleUpgradeClick = async () => {
@@ -200,7 +277,7 @@ export default function Onboarding() {
   };
 
   const renderStep = () => {
-    switch (step) {
+    switch (currentStep) {
       case 1:
         return (
           <motion.div
@@ -416,7 +493,7 @@ export default function Onboarding() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={nextStep}
+                onClick={handleNext}
                 className="w-full btn-primary relative overflow-hidden bg-gradient-to-r from-primary via-violet-500 to-primary bg-size-200 flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-medium shadow-xl shadow-primary/20 hover:bg-right transition-all duration-500"
               >
                 View Special Offer
@@ -426,7 +503,7 @@ export default function Onboarding() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                onClick={nextStep}
+                onClick={handleContinueFree}
                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
                 Continue with free plan
@@ -487,7 +564,7 @@ export default function Onboarding() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.2 }}
-                      onClick={handleSubmit}
+                      onClick={handleComplete}
                       className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                     >
                       Continue with free plan
@@ -609,13 +686,13 @@ export default function Onboarding() {
                   >
                     <Zap className="w-5 h-5 text-primary" />
                   </motion.div>
-                  <span className="font-medium text-gray-700">Step {step} of 5</span>
+                  <span className="font-medium text-gray-700">Step {currentStep} of 5</span>
                 </motion.div>
                 <motion.div 
                   variants={itemVariants}
                   className="text-sm font-medium bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent"
                 >
-                  {Math.round((step / 5) * 100)}% Complete
+                  {Math.round((currentStep / 5) * 100)}% Complete
                 </motion.div>
               </div>
               <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -623,7 +700,7 @@ export default function Onboarding() {
                   className="h-full bg-gradient-to-r from-primary via-violet-500 to-primary bg-size-200"
                   initial={{ width: '20%', backgroundPosition: '0% 0%' }}
                   animate={{ 
-                    width: `${step * 20}%`,
+                    width: `${currentStep * 20}%`,
                     backgroundPosition: ['0% 0%', '100% 0%']
                   }}
                   transition={{ 
@@ -643,7 +720,7 @@ export default function Onboarding() {
             <div className="p-8">
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={step}
+                  key={currentStep}
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -654,7 +731,7 @@ export default function Onboarding() {
               </AnimatePresence>
 
               {/* Enhanced navigation */}
-              {step < 5 && step !== 4 && (
+              {currentStep < 5 && currentStep !== 4 && (
                 <motion.div 
                   className="mt-8 flex justify-end"
                   variants={itemVariants}
@@ -664,13 +741,13 @@ export default function Onboarding() {
                   <motion.button
                     whileHover={{ scale: 1.02, translateY: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={nextStep}
-                    disabled={isSubmitting || (step === 1 && !data.fullName)}
+                    onClick={handleNext}
+                    disabled={isLoading || (currentStep === 1 && !data.fullName)}
                     className={`btn-primary relative overflow-hidden bg-gradient-to-r from-primary via-violet-500 to-primary bg-size-200 flex items-center gap-2 px-8 py-3.5 rounded-xl text-white font-medium shadow-xl shadow-primary/20 ${
-                      (isSubmitting || (step === 1 && !data.fullName)) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-right transition-all duration-500'
+                      (isLoading || (currentStep === 1 && !data.fullName)) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-right transition-all duration-500'
                     }`}
                   >
-                    {isSubmitting ? (
+                    {isLoading ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Saving...

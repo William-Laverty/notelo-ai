@@ -1,22 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, BookOpen, Brain, Link as LinkIcon, Sparkles, ArrowRight, 
   Clock, Zap, MessageSquare, FileText, PenTool, Youtube, FileUp, 
   Newspaper, Podcast, BookOpenCheck, GraduationCap, Lightbulb,
   BookMarked, ScrollText, Presentation, Blocks, Layers, Rocket,
-  Target, Award, Crown, ChevronDown
+  Target, Award, Crown, ChevronDown, Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { generateDemoSummary } from '../lib/ai-service';
 import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
+import { TypeAnimation } from 'react-type-animation';
 
 export default function Hero() {
   const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // 768px is typical tablet/mobile breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const position = window.scrollY;
+      const maxScroll = window.innerHeight * 0.8;
+      const progress = Math.min(position / maxScroll, 1);
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Calculate gradient opacity and transform based on scroll (disabled on mobile)
+  const gradientStyle = isMobile ? {} : {
+    opacity: Math.max(0, 1 - scrollProgress * 1.2),
+    transform: `scale(${1 + scrollProgress * 0.1}) translateY(${scrollProgress * -5}%)`,
+  };
+
+  // Animation variants based on device type
+  const floatingAnimation = isMobile ? {} : {
+    y: [0, -15, 0],
+    x: [0, 10, 0],
+    rotate: [0, 5, 0],
+    scale: [1, 1.1, 1],
+    transition: {
+      duration: 5,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }
+  };
+
+  const floatingAnimation2 = isMobile ? {} : {
+    y: [0, 15, 0],
+    x: [0, -5, 0],
+    rotate: [0, -5, 0],
+    scale: [1, 1.1, 1],
+    transition: {
+      duration: 7,
+      repeat: Infinity,
+      ease: "easeInOut",
+      delay: 2
+    }
+  };
+
+  const floatingAnimation3 = isMobile ? {} : {
+    y: [0, -10, 0],
+    x: [0, 5, 0],
+    rotate: [0, 3, 0],
+    scale: [1, 1.05, 1],
+    transition: {
+      duration: 6,
+      repeat: Infinity,
+      ease: "easeInOut",
+      delay: 1
+    }
+  };
 
   const handleGetStarted = () => {
     navigate('/signup');
@@ -68,48 +138,90 @@ export default function Hero() {
   };
 
   return (
-    <div className="relative min-h-screen bg-background">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#F7F9FD] via-white to-violet-100/20" />
-      
-      {/* Floating elements */}
-      <div>
-        {/* Top right sparkle */}
+    <div className="relative min-h-screen bg-background overflow-hidden">
+      {/* Base gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-white to-violet-50/30" />
+
+      {/* Animated gradient layers - conditionally animated */}
+      <div 
+        className={`absolute inset-0 ${!isMobile ? 'transition-all duration-1000 ease-out will-change-transform' : ''}`}
+        style={gradientStyle}
+      >
+        {/* Primary gradient layer */}
+        <div className={`absolute inset-0 bg-gradient-to-br from-violet-500/30 via-primary/20 to-violet-400/30 ${!isMobile ? 'animate-gradient-slow' : ''} blur-[100px]`} />
+        
+        {/* Secondary gradient layer */}
+        <div className={`absolute inset-0 bg-gradient-to-tr from-blue-500/20 via-violet-400/20 to-primary/20 mix-blend-soft-light ${!isMobile ? 'animate-gradient-slow-reverse' : ''} blur-[80px]`} />
+        
+        {/* Accent gradient layer */}
+        <div className={`absolute inset-0 bg-gradient-to-r from-violet-500/20 via-transparent to-primary/20 ${!isMobile ? 'animate-gradient-slow-delay' : ''} blur-[120px]`} />
+        
+        {/* Shimmer effect */}
+        <div className={`absolute inset-0 bg-gradient-to-tr from-white/5 to-white/30 mix-blend-overlay ${!isMobile ? 'animate-shimmer' : ''} blur-[60px]`} />
+      </div>
+
+      {/* Bottom fade-out blur layer - simplified on mobile */}
+      <div 
+        className="absolute inset-x-0 bottom-0 h-[50vh] pointer-events-none"
+        style={isMobile ? {
+          background: 'linear-gradient(to bottom, transparent, rgba(255, 255, 255, 1))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        } : {
+          background: `linear-gradient(to bottom, 
+            transparent,
+            rgba(255, 255, 255, ${scrollProgress * 0.3}) 20%,
+            rgba(255, 255, 255, ${scrollProgress * 0.6}) 40%,
+            rgba(255, 255, 255, ${scrollProgress * 0.9}) 60%,
+            rgba(255, 255, 255, 1) 100%
+          )`,
+          backdropFilter: `blur(${20 + scrollProgress * 30}px)`,
+          WebkitBackdropFilter: `blur(${20 + scrollProgress * 30}px)`,
+          transition: 'all 1000ms ease-out',
+        }}
+      />
+
+      {/* Extra blur layer - simplified on mobile */}
+      <div 
+        className="absolute inset-x-0 bottom-0 h-[30vh] pointer-events-none"
+        style={isMobile ? {
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+          background: 'linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.8))',
+        } : {
+          backdropFilter: `blur(${30 + scrollProgress * 40}px)`,
+          WebkitBackdropFilter: `blur(${30 + scrollProgress * 40}px)`,
+          background: 'linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.8))',
+          transition: 'all 1000ms ease-out',
+        }}
+      />
+
+      {/* Floating elements - conditionally animated */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div 
-          animate={{
-            y: [0, -15, 0],
-            x: [0, 10, 0],
-            rotate: [0, 5, 0],
-            transition: {
-              duration: 5,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }
-          }}
+          animate={floatingAnimation}
           className="absolute top-40 right-8 lg:right-auto lg:top-32 lg:left-[15%]"
         >
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 lg:w-6 lg:h-6 text-primary/70" />
+          <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl bg-white/30 backdrop-blur-sm border border-white/40 shadow-[0_8px_32px_rgba(99,102,241,0.1)] flex items-center justify-center">
+            <Sparkles className="w-6 h-6 lg:w-8 lg:h-8 text-primary" />
           </div>
         </motion.div>
 
-        {/* Bottom left book */}
         <motion.div 
-          animate={{
-            y: [0, 15, 0],
-            x: [0, -5, 0],
-            rotate: [0, 3, 0],
-            transition: {
-              duration: 7,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2
-            }
-          }}
+          animate={floatingAnimation2}
           className="absolute left-8 top-[45vh] lg:top-auto lg:bottom-48 lg:left-[25%]"
         >
-          <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.04)] flex items-center justify-center">
-            <BookOpen className="w-4 h-4 text-primary/70" />
+          <div className="w-10 h-10 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40 shadow-[0_8px_32px_rgba(99,102,241,0.1)] flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-primary" />
+          </div>
+        </motion.div>
+
+        <motion.div 
+          animate={floatingAnimation3}
+          className="absolute right-12 bottom-32 lg:right-[20%] lg:top-[60%]"
+        >
+          <div className="w-8 h-8 rounded-lg bg-white/30 backdrop-blur-sm border border-white/40 shadow-[0_8px_32px_rgba(99,102,241,0.1)] flex items-center justify-center">
+            <Brain className="w-4 h-4 text-violet-500" />
           </div>
         </motion.div>
       </div>
@@ -117,93 +229,198 @@ export default function Hero() {
       {/* Main Content Section */}
       <div className="min-h-screen flex flex-col">
         <main className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-8">
             <div className="min-h-[100vh] lg:min-h-0 grid lg:grid-cols-2 gap-16 sm:gap-8 lg:gap-12 items-center">
               {/* Hero Content */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="relative text-center lg:text-left flex flex-col justify-between lg:block h-[100vh] lg:h-auto pt-32 lg:pt-0"
+                initial={false}
+                animate={isMobile ? { opacity: 1 } : { opacity: 1 }}
+                className="relative text-center lg:text-left flex flex-col h-screen lg:h-auto"
               >
-                <div className="flex flex-col justify-center flex-1 lg:block">
-                  <div className="space-y-8 sm:space-y-6 -mt-16 lg:mt-0">
-                    <h1 className="text-4xl sm:text-5xl font-bold text-gray-900">
-                      <span className="block mb-2 lg:mb-0 lg:inline">Learn Smarter,</span>{' '}
-                      <span className="bg-gradient-to-r from-primary to-violet-500 text-transparent bg-clip-text">Not Harder</span>
-                    </h1>
-                    <p className="text-lg sm:text-xl text-gray-900 mx-auto lg:mx-0 max-w-lg">
-                      Transform any document into personalized study materials with AI-powered summaries, interactive quizzes, smart flashcards for better retention, and audio notes for on-the-go learning.
-                    </p>
-                  </div>
-                  
-                  {/* Stats Banner */}
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="mt-6"
-                  >
-                    <div className="relative group inline-block">
-                      <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400/30 to-emerald-600/30 rounded-full blur-lg group-hover:blur-xl transition-all duration-300"></div>
-                      <div className="relative px-6 py-2 bg-black/10 border border-emerald-500/30 rounded-full backdrop-blur-md">
-                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-500">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                          <span>Join <span className="font-bold">48 users</span> who started learning smarter today</span>
+                {/* Main content wrapper with flex to distribute space */}
+                <div className="flex-1 flex flex-col h-full">
+                  {/* Center section with main content */}
+                  <div className="flex-1 flex flex-col">
+                    {/* Early Access Badge */}
+                    <motion.div
+                      initial={false}
+                      animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                      className="pt-28 lg:pt-0 lg:mb-8"
+                    >
+                      <motion.div 
+                        className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-violet-100 text-violet-800 text-xs sm:text-sm font-medium"
+                        initial={false}
+                        animate={isMobile ? { opacity: 1 } : { scale: 1 }}
+                      >
+                        <motion.div
+                          initial={false}
+                          animate={isMobile ? { opacity: 1 } : { rotate: 0, opacity: 1 }}
+                        >
+                          <Crown className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                        </motion.div>
+                        <motion.span
+                          initial={false}
+                          animate={isMobile ? { opacity: 1 } : { opacity: 1 }}
+                        >
+                          Early Access - 40% Off
+                        </motion.span>
+                        <div className={`w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-violet-500 ${!isMobile ? 'animate-pulse' : ''}`}></div>
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Main content - centered on mobile */}
+                    <div className="flex-1 flex flex-col">
+                      {/* Heading section positioned in the box area */}
+                      <div className="mt-8 lg:mt-0">
+                        <div className="space-y-6 sm:space-y-6 lg:space-y-8 px-4 sm:px-8 lg:px-0">
+                          <motion.h1 
+                            className="text-[2rem] sm:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight"
+                            initial={false}
+                            animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                          >
+                            <motion.span 
+                              className="block mb-2"
+                              initial={false}
+                              animate={{ opacity: 1 }}
+                            >
+                              Transform Your
+                            </motion.span>
+                            <motion.span 
+                              className={`bg-gradient-to-r from-primary via-violet-500 to-primary text-transparent bg-clip-text bg-[length:200%_auto] ${!isMobile ? 'animate-gradient' : ''}`}
+                              initial={false}
+                              animate={{ opacity: 1 }}
+                            >
+                              Study Experience
+                            </motion.span>
+                          </motion.h1>
+                          <motion.p 
+                            className="text-base sm:text-lg lg:text-2xl text-gray-700 mx-auto lg:mx-0 max-w-xl leading-relaxed"
+                            initial={false}
+                            animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                          >
+                            Create <span className="font-semibold text-primary">personalized study materials</span> from any content in seconds. Perfect for students who want to study smarter, not harder.
+                          </motion.p>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
 
-                  {/* Content types grid - 3 columns */}
-                  <div className="mt-12 sm:mt-8">
-                    <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0">
+                      {/* Social Proof Section */}
                       <motion.div 
-                        className="flex flex-col items-center lg:items-start lg:flex-row lg:justify-start gap-3 sm:gap-2"
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.2 }}
+                        className="mt-6 sm:mt-8 space-y-4 sm:space-y-6"
+                        initial={false}
+                        animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
                       >
-                        <FileUp className="text-primary w-6 h-6" />
-                        <span className="text-sm sm:text-base text-text-secondary text-center lg:text-left">PDFs</span>
-                      </motion.div>
-                      <motion.div 
-                        className="flex flex-col items-center lg:items-start lg:flex-row lg:justify-start gap-3 sm:gap-2"
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Youtube className="text-primary w-6 h-6" />
-                        <span className="text-sm sm:text-base text-text-secondary text-center lg:text-left">Videos</span>
-                      </motion.div>
-                      <motion.div 
-                        className="flex flex-col items-center lg:items-start lg:flex-row lg:justify-start gap-3 sm:gap-2"
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Newspaper className="text-primary w-6 h-6" />
-                        <span className="text-sm sm:text-base text-text-secondary text-center lg:text-left">Articles</span>
+                        {/* Trust Badges */}
+                        <div className="flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-4 items-center">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <div className="flex -space-x-1.5 sm:-space-x-2">
+                              {[...Array(3)].map((_, i) => (
+                                <div key={i} className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-violet-100 to-primary/10 border-2 border-white flex items-center justify-center">
+                                  <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                                </div>
+                              ))}
+                            </div>
+                            <span><span className="font-semibold">48+ students</span> joined today</span>
+                          </div>
+                        </div>
+
+                        {/* Mobile-only Input/Output Types - Always visible on mobile */}
+                        <div className="mt-6 sm:mt-8 space-y-4 lg:hidden">
+                          {/* Input Types */}
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {[
+                              { icon: FileUp, text: 'PDFs' },
+                              { icon: Youtube, text: 'Videos' },
+                              { icon: Newspaper, text: 'Articles' }
+                            ].map((item, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100"
+                              >
+                                <item.icon className="w-3.5 h-3.5 text-gray-500" />
+                                <span className="text-xs text-gray-600">{item.text}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Output Types */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { 
+                                icon: FileText, 
+                                text: 'Smart Summaries',
+                                color: 'text-blue-600'
+                              },
+                              { 
+                                icon: MessageSquare, 
+                                text: 'Practice Quizzes',
+                                color: 'text-violet-600'
+                              },
+                              { 
+                                icon: BookOpenCheck, 
+                                text: 'Flashcards',
+                                color: 'text-emerald-600'
+                              },
+                              { 
+                                icon: Podcast, 
+                                text: 'Audio Notes',
+                                color: 'text-orange-600'
+                              }
+                            ].map((item, i) => (
+                              <div
+                                key={i}
+                                className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/50 border border-gray-100"
+                              >
+                                <div className={`p-2 rounded-lg bg-white shadow-sm ${item.color}`}>
+                                  <item.icon className="w-5 h-5" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-800">{item.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </motion.div>
                     </div>
+
+                    {/* Bottom-aligned CTA Section */}
+                    <motion.div 
+                      className="mt-auto pb-8 pt-4 lg:mt-16"
+                      initial={false}
+                      animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                    >
+                      <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                        <motion.button 
+                          onClick={handleGetStarted}
+                          className="w-full sm:w-auto btn-primary bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 transform hover:scale-105 transition-all duration-300 py-4 sm:py-5 px-6 sm:px-8 text-base sm:text-lg rounded-xl font-semibold text-white shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                          initial={false}
+                          animate={isMobile ? { opacity: 1 } : { scale: 1 }}
+                        >
+                          Get Started Free
+                          <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </motion.button>
+                      </div>
+                      <motion.p 
+                        className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-500 text-center lg:text-left"
+                        initial={false}
+                        animate={{ opacity: 1 }}
+                      >
+                        No credit card required • Cancel anytime
+                      </motion.p>
+                    </motion.div>
                   </div>
-                </div>
-
-                {/* CTA Button */}
-                <div className="pb-8 lg:pb-0 lg:mt-12">
-                  <button 
-                    onClick={handleGetStarted}
-                    className="w-full lg:w-auto btn-primary bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 transform hover:scale-105 transition-all duration-300 py-5 sm:py-4 px-8 text-base sm:text-lg rounded-xl"
-                  >
-                    Get Started for Free
-                  </button>
                 </div>
               </motion.div>
 
-              {/* Demo Section */}
-              <div id="demo-section" className="scroll-mt-24">
+              {/* Demo Section - Always visible on desktop */}
+              <motion.div 
+                id="demo-section" 
+                className="hidden lg:block scroll-mt-24"
+                initial={false}
+                animate={isMobile ? { opacity: 1 } : { opacity: 1, x: 0 }}
+              >
                 <motion.div
                   className="relative mx-auto lg:mx-0 w-full max-w-xl"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3, duration: 0.4 }}
+                  initial={false}
+                  animate={isMobile ? { opacity: 1 } : { opacity: 1, scale: 1 }}
                 >
                   <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                     <div className="p-4 sm:p-6">
@@ -268,55 +485,6 @@ export default function Hero() {
                                 )}
                               </button>
                             </form>
-
-                            {/* Feature Cards - 2x2 grid on mobile */}
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                              <motion.div 
-                                className="flex flex-col items-center p-2 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors text-center"
-                                whileHover={{ scale: 1.02 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <div className="p-1.5 rounded-lg bg-primary/10 mb-1">
-                                  <FileText className="text-primary w-4 h-4" />
-                                </div>
-                                <h3 className="font-medium text-xs text-gray-900">Smart Summaries</h3>
-                              </motion.div>
-
-                              <motion.div 
-                                className="flex flex-col items-center p-2 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors text-center"
-                                whileHover={{ scale: 1.02 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <div className="p-1.5 rounded-lg bg-violet-500/10 mb-1">
-                                  <MessageSquare className="text-violet-500 w-4 h-4" />
-                                </div>
-                                <h3 className="font-medium text-xs text-gray-900">Interactive Quizzes</h3>
-                              </motion.div>
-
-                              <motion.div 
-                                className="flex flex-col items-center p-2 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors text-center"
-                                whileHover={{ scale: 1.02 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <div className="p-1.5 rounded-lg bg-blue-500/10 mb-1">
-                                  <BookOpenCheck className="text-blue-500 w-4 h-4" />
-                                </div>
-                                <h3 className="font-medium text-xs text-gray-900">Smart Flashcards</h3>
-                                <p className="text-[10px] text-gray-500">For better retention</p>
-                              </motion.div>
-
-                              <motion.div 
-                                className="flex flex-col items-center p-2 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors text-center"
-                                whileHover={{ scale: 1.02 }}
-                                transition={{ duration: 0.2 }}
-                              >
-                                <div className="p-1.5 rounded-lg bg-green-500/10 mb-1">
-                                  <Podcast className="text-green-500 w-4 h-4" />
-                                </div>
-                                <h3 className="font-medium text-xs text-gray-900">Audio Notes</h3>
-                                <p className="text-[10px] text-gray-500">Learn on the go</p>
-                              </motion.div>
-                            </div>
                           </motion.div>
                         ) : (
                           <motion.div
@@ -326,60 +494,9 @@ export default function Hero() {
                             className="text-center lg:text-left"
                           >
                             <div className="space-y-4">
-                              <div className="text-sm text-gray-600 leading-relaxed">
-                                {summary}
-                              </div>
-                              
-                              {/* Feature Grid - 2x2 on mobile */}
-                              <div className="grid grid-cols-2 gap-2">
-                                <motion.div 
-                                  className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.1 }}
-                                >
-                                  <div className="p-1.5 rounded-lg bg-primary/10 mb-1">
-                                    <FileText className="text-primary w-4 h-4" />
-                                  </div>
-                                  <h3 className="font-medium text-xs text-gray-900">Full Summary</h3>
-                                </motion.div>
-
-                                <motion.div 
-                                  className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.2 }}
-                                >
-                                  <div className="p-1.5 rounded-lg bg-violet-500/10 mb-1">
-                                    <MessageSquare className="text-violet-500 w-4 h-4" />
-                                  </div>
-                                  <h3 className="font-medium text-xs text-gray-900">Interactive Quizzes</h3>
-                                </motion.div>
-
-                                <motion.div 
-                                  className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.3 }}
-                                >
-                                  <div className="p-1.5 rounded-lg bg-blue-500/10 mb-1">
-                                    <BookOpenCheck className="text-blue-500 w-4 h-4" />
-                                  </div>
-                                  <h3 className="font-medium text-xs text-gray-900">Smart Flashcards</h3>
-                                  <p className="text-[10px] text-gray-500">For better retention</p>
-                                </motion.div>
-
-                                <motion.div 
-                                  className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.4 }}
-                                >
-                                  <div className="p-1.5 rounded-lg bg-green-500/10 mb-1">
-                                    <Rocket className="text-green-500 w-4 h-4" />
-                                  </div>
-                                  <h3 className="font-medium text-xs text-gray-900">Premium</h3>
-                                </motion.div>
+                              <div className="text-sm text-gray-600 leading-relaxed relative">
+                                <div className="mb-4">{summary}</div>
+                                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent"></div>
                               </div>
                               
                               {/* CTA Section */}
@@ -400,10 +517,44 @@ export default function Hero() {
                           </motion.div>
                         )}
                       </AnimatePresence>
+
+                      {/* Feature Cards - Always visible */}
+                      <div className="grid grid-cols-2 gap-3 mt-6">
+                        {[
+                          { 
+                            icon: FileText, 
+                            title: 'Smart Summaries',
+                            color: 'bg-blue-50 text-blue-600'
+                          },
+                          { 
+                            icon: MessageSquare, 
+                            title: 'Practice Quizzes',
+                            color: 'bg-violet-50 text-violet-600'
+                          },
+                          { 
+                            icon: BookOpenCheck, 
+                            title: 'Flashcards',
+                            color: 'bg-emerald-50 text-emerald-600'
+                          },
+                          { 
+                            icon: Podcast, 
+                            title: 'Audio Notes',
+                            color: 'bg-orange-50 text-orange-600'
+                          }
+                        ].map((item, i) => (
+                          <div
+                            key={i}
+                            className={`flex flex-col items-center justify-center gap-2 px-3 py-3 rounded-lg ${item.color} text-center`}
+                          >
+                            <item.icon className="w-5 h-5" />
+                            <span className="text-sm font-medium">{item.title}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
-              </div>
+              </motion.div>
             </div>
           </div>
         </main>

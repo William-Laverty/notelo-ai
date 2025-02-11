@@ -30,12 +30,6 @@ export default function Features() {
       color: "text-yellow-500"
     },
     {
-      icon: <Brain className="w-6 h-6" />,
-      title: "Smart Analysis",
-      description: "Get intelligent insights and key takeaways from your documents. Our AI identifies main themes and important details.",
-      color: "text-blue-500"
-    },
-    {
       icon: <GraduationCap className="w-6 h-6" />,
       title: "Interactive Quizzes",
       description: "Test your understanding with AI-generated quizzes based on your documents. Perfect for active learning and retention.",
