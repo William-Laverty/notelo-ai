@@ -1,3 +1,6 @@
+// Features page
+// Basically all the feautures of the app to increase conversion rate. Did A/B tests of which features to show.
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +25,9 @@ import {
 export default function Features() {
   const navigate = useNavigate();
 
+  /**
+   * Complete list of app features with icons, descriptions, and color themes
+   */
   const features = [
     {
       icon: <Zap className="w-6 h-6" />,
@@ -81,7 +87,7 @@ export default function Features() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-20">
-      {/* Hero Section */}
+      {/* Hero section with features page title and main CTA */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
@@ -112,7 +118,7 @@ export default function Features() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-gradient-to-b from-purple-50 to-transparent opacity-50" />
       </div>
 
-      {/* Features Grid */}
+      {/* Main features grid showcasing all app capabilities */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
@@ -137,7 +143,7 @@ export default function Features() {
         </div>
       </div>
 
-      {/* Call to Action */}
+      {/* Bottom call-to-action driving users to pricing page */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-500 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div

@@ -1,9 +1,15 @@
+// Admin page
+// Made this page to view users and their data instead of using Supabase UI. DOESNT WORK.
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, FileText, Clock, TrendingUp, Lock, Eye, EyeOff, Trash2, Ban, Crown, DollarSign, Zap } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+/**
+ * User data structure for admin dashboard display
+ */
 interface User {
   id: string;
   email: string;
@@ -14,6 +20,9 @@ interface User {
   total_time_saved: number;
 }
 
+/**
+ * Admin dashboard statistics and metrics
+ */
 interface AdminStats {
   totalUsers: number;
   totalDocuments: number;
@@ -24,6 +33,10 @@ interface AdminStats {
   monthlyRecurringRevenue: number;
 }
 
+/**
+ * Admin dashboard component for viewing users and analytics
+ * Protected by passcode authentication displays metrics
+ */
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
@@ -40,8 +53,12 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [showPasscode, setShowPasscode] = useState(false);
 
+  // Admin passcode for authentication
   const ADMIN_PASSCODE = '439126';
 
+  /**
+   * Validates admin passcode and grants access to dashboard
+   */
   const handleAuthentication = () => {
     if (passcode === ADMIN_PASSCODE) {
       setIsAuthenticated(true);
@@ -67,6 +84,9 @@ export default function Admin() {
     }
   }, [isAuthenticated]);
 
+  /**
+   * Fetches all users from database with their document counts
+   */
   const fetchUsers = async () => {
     try {
       const { data: users, error } = await supabase
@@ -97,6 +117,10 @@ export default function Admin() {
     }
   };
 
+  /**
+   * Calculates and fetches admin dashboard statistics
+   * Includes user metrics, revenue data, and engagement analytics
+   */
   const fetchStats = async () => {
     try {
       // Get total users
@@ -156,6 +180,9 @@ export default function Admin() {
     }
   };
 
+  /**
+   * Permanently deletes a user from the system with confirmation
+   */
   const handleDeleteUser = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       try {
@@ -175,6 +202,9 @@ export default function Admin() {
     }
   };
 
+  /**
+   * Bans a user account to prevent access
+   */
   const handleBanUser = async (userId: string) => {
     if (window.confirm('Are you sure you want to ban this user?')) {
       try {
@@ -200,6 +230,7 @@ export default function Admin() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Passcode authentication form */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -240,7 +271,7 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Stats Grid */}
+        {/* Admin dashboard statistics grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -344,7 +375,7 @@ export default function Admin() {
           </motion.div>
         </div>
 
-        {/* Users Table */}
+        {/* Users management table with actions */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900">Users</h2>

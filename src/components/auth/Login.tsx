@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { supabase, signInWithGoogle } from '../../lib/supabase-client';
 import PageLayout from '../../components/layout/PageLayout';
+import { validateEmail, validatePassword } from '../../utils/validation';
 
 export default function Login() {
   const [email, setEmail] = useState('');

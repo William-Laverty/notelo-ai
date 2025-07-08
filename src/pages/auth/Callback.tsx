@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase-client';
+import { sendWelcomeEmail } from '../../lib/email-service';
 import { toast } from 'react-hot-toast';
 
 export default function AuthCallback() {
@@ -58,6 +59,27 @@ export default function AuthCallback() {
           if (insertError) {
             console.error('Profile creation error:', insertError);
             throw new Error(`Failed to create user profile: ${insertError.message}`);
+          }
+
+          // Send welcome email for new users
+          if (session.user.email) {
+            try {
+              console.log('Sending welcome email to:', session.user.email);
+              const { data: emailResult, error: emailError } = await sendWelcomeEmail({
+                email: session.user.email,
+                user_metadata: session.user.user_metadata
+              });
+
+              if (emailError) {
+                console.error('Welcome email error:', emailError);
+                toast.error('Welcome email could not be sent');
+              } else {
+                console.log('Welcome email sent successfully:', emailResult);
+              }
+            } catch (error) {
+              console.error('Failed to send welcome email:', error);
+              toast.error('Welcome email could not be sent');
+            }
           }
 
           console.log('Profile created successfully');

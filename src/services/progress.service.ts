@@ -1,3 +1,5 @@
+// User progress tracking and use
+
 import { PrismaClient } from '@prisma/client';
 
 const db = new PrismaClient();

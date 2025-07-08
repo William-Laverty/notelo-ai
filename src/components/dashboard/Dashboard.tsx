@@ -14,6 +14,7 @@ import LimitReachedDialog from '../upgrade/LimitReachedDialog';
 import FreePlanDialog from '../upgrade/FreePlanDialog';
 import Onboarding from '../onboarding/Onboarding';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import { sendFirstDocumentEmail } from '../../lib/email-service';
 
 // Function to initialize PDF.js worker
 const initPdfWorker = async () => {
@@ -63,8 +64,7 @@ interface Document {
   text_content: string;
   summary?: string;
   created_at: string;
-  content_type: 'pdf' | 'video' | 'url';
-  type: 'text' | 'youtube' | 'url';
+  content_type: 'pdf' | 'url' | 'youtube';
   user_id: string;
   quiz_questions?: QuizQuestion[];
 }
@@ -532,97 +532,129 @@ export default function Dashboard() {
     content_type: 'pdf' | 'video' | 'url'
   ) => {
     try {
-      // Map content_type to type
-      const typeMap = {
-        pdf: 'text',
-        video: 'youtube',
-        url: 'url'
-      } as const;
+      setProcessingStatus('Generating summary...');
+      setProcessingProgress(50);
 
-      // Create document
-      const { data: document, error: docError } = await supabase
+      let title = originalTitle;
+      let summary: string;
+      let quiz_questions: QuizQuestion[] | undefined;
+
+      try {
+        if (!originalTitle) {
+          title = await generateTitle(content);
+        }
+      } catch (error) {
+        console.error('Error generating title:', error);
+        title = 'Untitled Document';
+      }
+
+      try {
+        summary = await generateSummary(content);
+        setProcessingProgress(75);
+      } catch (error) {
+        console.error('Error generating summary:', error);
+        if (error instanceof Error && error.message.includes('429')) {
+          toast.error(
+            'API quota exceeded. A basic summary has been generated. You can try generating an enhanced summary later.',
+            { duration: 6000 }
+          );
+          summary = await generateSummary(content); // This will use the fallback
+        } else {
+          toast.error('Failed to generate summary. Please try again later.');
+          throw error;
+        }
+      }
+
+      try {
+        quiz_questions = await generateQuiz(content);
+        setProcessingProgress(90);
+      } catch (error) {
+        console.error('Error generating quiz:', error);
+        quiz_questions = undefined;
+      }
+
+      // Check if this is the user's first document
+      const { data: existingDocs, error: docsError } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('user_id', user?.id)
+        .limit(1);
+
+      if (docsError) {
+        console.error('Error checking existing documents:', docsError);
+      }
+
+      const isFirstDocument = !docsError && (!existingDocs || existingDocs.length === 0);
+
+      // Save document to Supabase
+      const { data: doc, error: saveError } = await supabase
         .from('documents')
         .insert([
           {
-            title: originalTitle,
+            title,
             text_content: content,
+            summary,
+            quiz_questions,
             content_type,
-            type: typeMap[content_type],
             user_id: user?.id,
-          }
+            created_at: new Date().toISOString(),
+          },
         ])
         .select()
         .single();
 
-      if (docError) throw docError;
-      if (!document) throw new Error('No document returned from insert');
-
-      // Update documents list
-      setDocuments(prev => [document, ...(prev || [])]);
-      
-      // Generate summary
-      setProcessingStatus('Generating summary...');
-      setProcessingProgress(50);
-      
-      const summary = await generateSummary(content);
-      
-      // Update document with summary
-      const { error: summaryError } = await supabase
-        .from('documents')
-        .update({ summary })
-        .eq('id', document.id);
-
-      if (summaryError) throw summaryError;
-
-      // Update usage count in profiles table
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('usage_count')
-        .eq('id', user?.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching profile:', fetchError);
-        throw fetchError;
+      if (saveError) {
+        console.error('Error saving document:', saveError);
+        toast.error('Failed to save document. Please try again.');
+        throw saveError;
       }
 
-      const currentCount = typeof currentProfile?.usage_count === 'number' ? currentProfile.usage_count : 0;
-      const newCount = currentCount + 1;
-
-      const { error: profileError } = await supabase
+      // Update usage count
+      const { error: usageError } = await supabase
         .from('profiles')
         .update({ 
-          usage_count: newCount,
+          usage_count: (profile?.usage_count || 0) + 1,
           updated_at: new Date().toISOString()
         })
         .eq('id', user?.id);
 
-      if (profileError) {
-        console.error('Error updating usage count:', profileError);
-        throw profileError;
+      if (usageError) {
+        console.error('Error updating usage count:', usageError);
       }
 
-      // Refresh profile data in component state
-      await fetchProfile();
+      // Send first document email if this is their first document
+      if (isFirstDocument && user?.email) {
+        try {
+          console.log('Sending first document email to:', user.email);
+          const { data: emailResult, error: emailError } = await sendFirstDocumentEmail({
+            email: user.email,
+            user_metadata: user.user_metadata
+          });
 
-      // Update local state
-      setDocuments(prev => prev?.map(doc => 
-        doc.id === document.id ? { ...doc, summary } : doc
-      ));
+          if (emailError) {
+            console.error('First document email error:', emailError);
+          } else {
+            console.log('First document email sent successfully:', emailResult);
+          }
+        } catch (error) {
+          console.error('Failed to send first document email:', error);
+        }
+      }
 
+      setProcessingStatus('Complete!');
       setProcessingProgress(100);
-      setProcessingStatus('Processing complete!');
-
-      // Select the new document
-      setSelectedDocument(document);
       
-    } catch (error: any) {
-      console.error('Error processing document:', error);
-      toast.error(`Failed to process document: ${error.message}`);
-    } finally {
-      setIsProcessing(false);
+      toast.success('Document processed successfully!');
+
+      // Refresh documents list
+      fetchDocuments();
+      
+      return doc;
+    } catch (error) {
+      console.error('Error in processContent:', error);
+      setProcessingStatus('Error');
       setProcessingProgress(0);
-      setProcessingStatus('');
+      throw error;
     }
   };
 
@@ -1078,17 +1110,17 @@ export default function Dashboard() {
                         style={{
                           background: doc.content_type === 'url' 
                             ? 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)' 
-                            : doc.content_type === 'youtube'
-                            ? 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)'
-                            : 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)'
+                            : doc.content_type === 'pdf'
+                            ? 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)'
+                            : 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)'  // youtube
                         }}
                       >
                         {doc.content_type === 'url' ? (
                           <LinkIcon className="w-6 h-6 text-white" />
-                        ) : doc.content_type === 'youtube' ? (
-                          <Youtube className="w-6 h-6 text-white" />
-                        ) : (
+                        ) : doc.content_type === 'pdf' ? (
                           <FileText className="w-6 h-6 text-white" />
+                        ) : (
+                          <Youtube className="w-6 h-6 text-white" />
                         )}
                       </motion.div>
                       <div>
@@ -1348,3 +1380,4 @@ export default function Dashboard() {
     </div>
   );
 }
+ 

@@ -1,3 +1,6 @@
+// Pricing page
+// They don't pay me the big bucks for no reason :)
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +16,16 @@ import {
   X
 } from 'lucide-react';
 
+/**
+ * Pricing page component that displays subscription plans and features
+ * Handles navigation to signup/payment based on selected plan
+ */
 export default function Pricing() {
   const navigate = useNavigate();
 
+  /**
+   * Available subscription plans with features and pricing details
+   */
   const plans = [
     {
       name: "Free",
@@ -58,6 +68,9 @@ export default function Pricing() {
     }
   ];
 
+  /**
+   * Key product features showcased below pricing cards
+   */
   const features = [
     {
       icon: <Zap className="w-6 h-6 text-yellow-500" />,
@@ -83,7 +96,7 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-20">
-      {/* Hero Section */}
+      {/* Hero section with pricing page title and description */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <motion.div
@@ -106,7 +119,7 @@ export default function Pricing() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-gradient-to-b from-purple-50 to-transparent opacity-50" />
       </div>
 
-      {/* Pricing Cards */}
+      {/* Main pricing cards comparing Free vs Pro plans */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {plans.map((plan, index) => (
@@ -175,7 +188,7 @@ export default function Pricing() {
         </div>
       </div>
 
-      {/* Features Grid */}
+      {/* Product features grid highlighting key benefits */}
       <div className="bg-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -216,7 +229,7 @@ export default function Pricing() {
         </div>
       </div>
 
-      {/* FAQ Section */}
+      {/* FAQ section answering common pricing questions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -291,7 +304,7 @@ export default function Pricing() {
         </div>
       </div>
 
-      {/* Call to Action */}
+      {/* Final call-to-action encouraging free trial signup */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-500 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div

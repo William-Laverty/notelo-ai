@@ -1,7 +1,13 @@
+// About page
+// Mainly for SEO but always provides proof for the website that it's not a scam.
+
 import { motion } from 'framer-motion';
 import { BookOpen, Sparkles, Brain, Clock, Code, School, Rocket, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Key features and values 
+ */
 const features = [
   {
     icon: Brain,
@@ -29,6 +35,9 @@ const features = [
   }
 ];
 
+/**
+ * Animation variants for staggered container animations
+ */
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -39,6 +48,9 @@ const containerVariants = {
   }
 };
 
+/**
+ * Animation variants for individual feature items
+ */
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -50,11 +62,15 @@ const itemVariants = {
   }
 };
 
+/**
+ * About page component telling the founder's story and Notelo's mission
+ * Includes personal background, vision, and call-to-action for new users
+ */
 export default function About() {
   const navigate = useNavigate();
   return (
     <>
-      {/* Hero Section */}
+      {/* Hero section with Notelo story introduction */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -84,7 +100,7 @@ export default function About() {
       </motion.div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        {/* Vision Section */}
+        {/* Vision statement and mission of Notelo */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,7 +117,7 @@ export default function About() {
           </div>
         </motion.div>
 
-        {/* Story Section */}
+        {/* Personal story and background of the founder */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -167,7 +183,7 @@ export default function About() {
           </div>
         </motion.div>
 
-        {/* Features Section */}
+        {/* Key features grid highlighting Notelo's values */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -192,7 +208,7 @@ export default function About() {
           })}
         </motion.div>
 
-        {/* Join Section */}
+        {/* Call-to-action section encouraging user signup */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

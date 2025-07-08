@@ -1,3 +1,6 @@
+// AppRoutes.tsx
+// This file definesthe routes for Notelo AI.
+
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -26,13 +29,19 @@ import PageLayout from './components/layout/PageLayout';
 import MockupGenerator from './pages/MockupGenerator';
 import { Analytics } from "@vercel/analytics/react";
 import Admin from './pages/Admin';
-import Banner from './components/Banner';
 import AuthCallback from './pages/auth/Callback';
 
+/**
+ * Props interface for PrivateRoute component
+ */
 interface PrivateRouteProps {
   children?: React.ReactNode;
 }
 
+/**
+ * Wrapper component that protects routes requiring authentication
+ * Redirects to login if user is not authenticated
+ */
 function PrivateRoute({ children }: PrivateRouteProps) {
   const { user } = useAuth();
   const location = useLocation();
@@ -44,13 +53,17 @@ function PrivateRoute({ children }: PrivateRouteProps) {
   return children || <Outlet />;
 }
 
+/**
+ * Main routing component that defines all application routes
+ * Handles public pages, authentication, and protected routes
+ */
 export default function AppRoutes() {
   return (
     <>
       <Analytics />
       <ScrollToTop />
       <Routes>
-        {/* Landing page route */}
+        {/* Landing page - combines hero, features, and pricing sections */}
         <Route path="/" element={
           <>
             <Navbar />
@@ -58,11 +71,10 @@ export default function AppRoutes() {
             <FeaturesComponent />
             <PricingComponent />
             <Footer />
-            <Banner />
           </>
         } />
 
-        {/* Public pages */}
+        {/* Public marketing and informational pages */}
         <Route path="/features" element={
           <PageLayout>
             <Features />
@@ -99,20 +111,21 @@ export default function AppRoutes() {
           </PageLayout>
         } />
 
-        {/* Auth routes */}
+        {/* Authentication pages - login and signup */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Protected Routes */}
+        {/* Protected user dashboard and account routes */}
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<PageLayout includeNavbar={false}><Dashboard /></PageLayout>} />
           <Route path="/account" element={<PageLayout includeNavbar={false}><Account /></PageLayout>} />
           <Route path="/payment" element={<PageLayout includeNavbar={false}><Payment /></PageLayout>} />
         </Route>
 
-        {/* Admin Route - Protected by passcode */}
+        {/* Admin interface - separate from user routes */}
         <Route path="/admin" element={<PageLayout includeNavbar={false}><Admin /></PageLayout>} />
 
+        {/* User onboarding flow after signup */}
         <Route path="/onboarding" element={
           <PrivateRoute>
             <PageLayout includeNavbar={false}>
@@ -121,6 +134,7 @@ export default function AppRoutes() {
           </PrivateRoute>
         } />
 
+        {/* Document viewing with dynamic ID parameter */}
         <Route path="/document/:id" element={
           <PrivateRoute>
             <PageLayout>
@@ -129,7 +143,7 @@ export default function AppRoutes() {
           </PrivateRoute>
         } />
 
-        {/* Auth Callback Route */}
+        {/* OAuth callback handler for authentication */}
         <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
     </>

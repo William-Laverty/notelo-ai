@@ -1,3 +1,7 @@
+// Validation utils for Notelo AI
+// Used to validate email and password of user.
+// Used to sanitize user input.
+
 import { z } from 'zod';
 
 // Email validation schema
@@ -27,6 +31,7 @@ export const sanitizeInput = (input: string): string => {
     .slice(0, 255); 
 };
 
+// Validation result interface
 interface ValidationResult<T> {
   success: boolean;
   data?: T;

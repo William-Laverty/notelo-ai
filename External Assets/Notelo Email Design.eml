@@ -1,0 +1,188 @@
+Content-Type: multipart/alternative;
+	boundary="Apple-Mail=_36B5A248-D8F6-4638-BFCE-6283E75D0400"
+Subject: 
+Mime-Version: 1.0 (Mac OS X Mail 16.0 \(3826.400.113.1.2\))
+X-Apple-Base-Url: x-msg://2/
+X-Universally-Unique-Identifier: C4DDCE31-C878-41C9-AE82-46ED08478972
+X-Apple-Mail-Remote-Attachments: YES
+From: Dev <will@william-laverty.online>
+X-Apple-Windows-Friendly: 1
+Date: Tue, 21 Jan 2025 12:37:19 +1100
+X-Apple-Mail-Signature: 0EDE61AC-2486-4E9C-A147-F2A2E458C99A
+Message-Id: <82309811-F69E-4ED6-88B2-775B7D44382D@william-laverty.online>
+X-Uniform-Type-Identifier: com.apple.mail-draft
+
+
+--Apple-Mail=_36B5A248-D8F6-4638-BFCE-6283E75D0400
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+
+--Apple-Mail=_36B5A248-D8F6-4638-BFCE-6283E75D0400
+Content-Transfer-Encoding: 7bit
+Content-Type: text/html;
+	charset=us-ascii
+
+<html><head></head><body dir="auto" style="overflow-wrap: break-word; -webkit-nbsp-mode: space; line-break: after-white-space;"><!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0;
+            padding: 0;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 32px;
+            background: linear-gradient(to bottom right, #f9fafb, #ffffff, #f5f3ff);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo img {
+            height: 40px;
+        }
+
+        .header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #6366f1;
+            margin-bottom: 24px;
+        }
+
+        .content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-list {
+            background: #f5f3ff;
+            padding: 20px 32px;
+            border-radius: 8px;
+            margin: 24px 0;
+        }
+
+        .feature-item {
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .feature-item:before {
+            content: "•";
+            color: #6366f1;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+
+        .price-highlight {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 24px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 24px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 24px 0;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .signature {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .ps {
+            margin-top: 24px;
+            padding: 16px;
+            background: #fef2f2;
+            border-radius: 8px;
+            color: #991b1b;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                padding: 16px;
+            }
+            
+            .content {
+                padding: 24px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="logo">
+            <img src="https://www.notelo-ai.com/notelo-logo.png" alt="Notelo AI Logo">
+        </div>
+        
+        <div class="content">
+            <div class="header">Hey there! 👋</div>
+            
+            <p>I'm Will, the 17-year-old developer behind Notelo AI and I wanted to personally thank you for being one of our early users. Your trust in my platform means a lot to me.</p>
+            
+            <p>I noticed you've been exploring Notelo's features, and I wanted to offer you something special. As one of our first users, I'd like to extend an exclusive discount for Notelo Pro, which includes:</p>
+            
+            <div class="feature-list">
+                <div class="feature-item">Unlimited document processing with PDF support</div>
+                <div class="feature-item">Advanced AI-powered summaries</div>
+                <div class="feature-item">Interactive flashcard generation</div>
+                <div class="feature-item">Custom quiz creation</div>
+                <div class="feature-item">Audio note conversion</div>
+            </div>
+
+            <div class="price-highlight">
+                <div style="font-size: 20px; margin-bottom: 8px;">40% OFF FOR LIFE</div>
+                <div style="font-size: 32px; font-weight: bold;">$5.99/month</div>
+                <div style="text-decoration: line-through; opacity: 0.8;">Regular price: $9.99/month</div>
+            </div>
+
+            <p>I'm also happy to personally help you get started and make the most of these features. Feel free to reply to this email with any questions – I'd love to hear about your learning goals and show you how Notelo can help achieve them.</p>
+
+            <a href="https://www.notelo-ai.com/upgrade" class="cta-button">
+                Upgrade Now →
+            </a>
+
+            <div class="signature">
+                <p>Thanks again for being part of our early community!</p>
+                <p>
+                    Best regards,<br>
+                    Will<br>
+                    <span style="color: #6366f1;">Founder, Notelo AI</span>
+                </p>
+            </div>
+
+            <div class="ps">
+                <strong>P.S.</strong> This offer is exclusive to our first users and expires in 48 hours. Don't miss out on locking in this lifetime discount!
+            </div>
+        </div>
+    </div>
+</body>
+</html></body></html>
+--Apple-Mail=_36B5A248-D8F6-4638-BFCE-6283E75D0400--

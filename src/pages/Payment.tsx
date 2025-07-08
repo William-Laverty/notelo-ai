@@ -1,3 +1,6 @@
+// Payment page
+// I really hated the way that the PayPal checkout looked... so I made my own.
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +11,18 @@ import { verifyPayPalSubscription } from '../api/paypal';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase-client';
 
+/**
+ * Global window interface extension for Reddit conversion tracking
+ */
+declare global {
+  interface Window {
+    trackRedditConversion?: (event: string, email?: string, conversionId?: string) => void;
+  }
+}
+
+/**
+ * Pro plan features displayed in the payment page
+ */
 const features = [
   {
     icon: BrainCircuit,
@@ -31,6 +46,9 @@ const features = [
   }
 ];
 
+/**
+ * Payment guarantees and security promises shown to users
+ */
 const guarantees = [
   {
     title: '30-Day Money Back',
@@ -46,7 +64,9 @@ const guarantees = [
   }
 ];
 
-// PayPal Button wrapper component for better loading handling
+/**
+ * PayPal integration wrapper component with error handling and retry logic
+ */
 function PayPalButtonWrapper({ planId = 'P-2YL98489JN785131BM6DWIHQ' }) {
   const [{ isPending, isRejected }] = usePayPalScriptReducer();
   const [retryCount, setRetryCount] = useState(0);
@@ -64,6 +84,10 @@ function PayPalButtonWrapper({ planId = 'P-2YL98489JN785131BM6DWIHQ' }) {
     }
   }, [isRejected, retryCount]);
 
+  /**
+   * Handles PayPal subscription approval and verification
+   * Tracks Reddit conversion and redirects user on success
+   */
   const handleApprove = async (data: any, actions: any) => {
     try {
       if (!user?.id) {
@@ -82,6 +106,15 @@ function PayPalButtonWrapper({ planId = 'P-2YL98489JN785131BM6DWIHQ' }) {
       
       if (result.success) {
         toast.success('Subscription activated successfully!');
+        
+        // Track Reddit conversion for PayPal subscription
+        if (window.trackRedditConversion) {
+          window.trackRedditConversion('Purchase', user.email, data.subscriptionID);
+          console.log('Reddit conversion tracking sent for PayPal purchase with email:', user.email, 'and conversion ID:', data.subscriptionID);
+        } else {
+          console.warn('Reddit conversion tracking not available');
+        }
+        
         navigate('/account', { replace: true });
       } else {
         toast.error('Failed to verify subscription');
@@ -141,6 +174,10 @@ function PayPalButtonWrapper({ planId = 'P-2YL98489JN785131BM6DWIHQ' }) {
   );
 }
 
+/**
+ * Payment page component with PayPal integration and subscription details
+ * Handles Pro plan upgrades, promo codes, and payment processing
+ */
 export default function Payment() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -153,6 +190,9 @@ export default function Payment() {
     return null;
   }
 
+  /**
+   * Validates and applies promo codes for subscription discounts
+   */
   const handlePromoSubmit = () => {
     if (promoCode.toUpperCase() === 'STUDYSMART') {
       setIsPromoValid(true);
@@ -176,7 +216,7 @@ export default function Payment() {
         </motion.button>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Plan Details */}
+          {/* Left column - Pro plan features and developer message */}
           <div className="space-y-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -266,7 +306,7 @@ export default function Payment() {
               </div>
             </motion.div>
 
-            {/* Guarantees */}
+            {/* Payment guarantees and security assurances */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -303,7 +343,7 @@ export default function Payment() {
             </motion.div>
           </div>
 
-          {/* Right Column - Payment */}
+          {/* Right column - payment form and checkout */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -315,7 +355,7 @@ export default function Payment() {
               <div className="relative">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Complete Your Purchase</h2>
 
-                {/* Order Summary */}
+                {/* Order summary with pricing breakdown */}
                 <div className="mb-8 p-4 rounded-xl bg-gray-50">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
                   <div className="space-y-3">
@@ -336,7 +376,7 @@ export default function Payment() {
                   </div>
                 </div>
 
-                {/* Promo Code Section */}
+                {/* Promo code input and validation */}
                 <div className="mb-8">
                   {!showPromoInput ? (
                     <button
@@ -376,7 +416,7 @@ export default function Payment() {
                   )}
                 </div>
 
-                {/* What You're Getting */}
+                {/* Detailed feature list for what user gets */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">What You're Getting</h3>
                   <div className="space-y-4">
@@ -451,7 +491,7 @@ export default function Payment() {
                   <span>Your payment is secured by PayPal's encryption</span>
                 </div>
                 
-                {/* PayPal Button Container */}
+                {/* PayPal payment integration with plan selection */}
                 <PayPalScriptProvider options={{
                   clientId: "AVjmUNw3yof1TfyM4oMqpkqiu73RBxUajjHiqEhGKK1l-IueMWJVhR8Ec_-mswxCykCbP0V-0NukoKHL",
                   vault: true,

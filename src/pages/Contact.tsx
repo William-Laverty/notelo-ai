@@ -1,9 +1,24 @@
+// Contact page
+// If users have issues they can leave a message that populates in DB. Haven't read them yet.
+
 import { motion } from 'framer-motion';
 import { Mail, MessageSquare, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase-client';
 
+/**
+ * Global window interface extension for Reddit conversion tracking
+ */
+declare global {
+  interface Window {
+    trackRedditConversion?: (event: string, email?: string, conversionId?: string) => void;
+  }
+}
+
+/**
+ * Contact methods displayed in the contact information section
+ */
 const contactMethods = [
   {
     title: 'William Laverty',
@@ -20,6 +35,10 @@ const contactMethods = [
   }
 ];
 
+/**
+ * Contact page component with message form and developer information
+ * Stores messages in database and tracks conversions for analytics
+ */
 export default function Contact() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -32,6 +51,9 @@ export default function Contact() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  /**
+   * Handles form input changes and clears error states
+   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -42,6 +64,10 @@ export default function Contact() {
     }
   };
 
+  /**
+   * Submits contact form, saves to database, and tracks conversions
+   * Handles both client-side and server-side conversion tracking
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -49,6 +75,10 @@ export default function Contact() {
     setErrorMessage('');
 
     try {
+      // Generate a unique conversion ID for this contact submission
+      const conversionId = `contact_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      
+      // Insert message into Supabase directly from client
       const { error } = await supabase
         .from('contact_messages')
         .insert([
@@ -62,6 +92,29 @@ export default function Contact() {
 
       if (error) {
         throw error;
+      }
+
+      // Track Reddit conversion client-side
+      if (window.trackRedditConversion) {
+        window.trackRedditConversion('contact_form_submitted', formData.email, conversionId);
+        console.log('Reddit conversion tracked for contact form with ID:', conversionId);
+      }
+      
+      // Also send to server for server-side tracking with the same conversion ID
+      try {
+        await fetch('/api/contact/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            conversionId
+          }),
+        });
+      } catch (serverError) {
+        // If server-side tracking fails, we still have client-side tracking
+        console.warn('Server-side conversion tracking failed:', serverError);
       }
 
       setSubmitStatus('success');
@@ -79,7 +132,7 @@ export default function Contact() {
 
   return (
     <>
-      {/* Hero Section */}
+      {/* Hero section with page title and personal greeting */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -107,7 +160,7 @@ export default function Contact() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-          {/* Contact Methods */}
+          {/* Left column - contact information and social links */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -160,7 +213,7 @@ export default function Contact() {
               })}
             </div>
 
-            {/* Social Links */}
+            {/* Social media links and external profiles */}
             <div className="mt-12">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Follow Me</h3>
               <div className="flex gap-4">
@@ -188,7 +241,7 @@ export default function Contact() {
             </div>
           </motion.div>
 
-          {/* Contact Form */}
+          {/* Right column - contact form with validation and success states */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}

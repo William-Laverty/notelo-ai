@@ -1,3 +1,6 @@
+// Mockup generator page
+// I made this to generate mockups for the app to use on social media. It works but I'm not sure if it's worth the time to keep it. By works it 
+
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -21,16 +24,28 @@ import {
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
+/**
+ * Background format options for mockup generation
+ */
 type Format = 'transparent' | 'gradient' | 'solid';
+
+/**
+ * Available mockup page types for different app sections
+ */
 type MockupType = 'hero' | 'content' | 'summary' | 'flashcards' | 'dashboard';
 
+/**
+ * Mockup generator component for creating marketing assets and social media content
+ */
 export default function MockupGenerator() {
   const [format, setFormat] = useState<Format>('gradient');
   const [selectedMockup, setSelectedMockup] = useState<MockupType>('hero');
   
   const mockupRef = useRef<HTMLDivElement>(null);
 
-  // Function to convert image to base64
+  /**
+   * Converts image URL to base64 string for SVG embedding
+   */
   const getImageBase64 = async (url: string): Promise<string> => {
     const response = await fetch(url);
     const blob = await response.blob();
@@ -49,7 +64,9 @@ export default function MockupGenerator() {
     });
   };
 
-  // Function to generate SVG with embedded image
+  /**
+   * Generates SVG markup with embedded base64 image and gradient background
+   */
   const generateSVG = (base64Image: string) => `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
     <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -68,7 +85,9 @@ export default function MockupGenerator() {
       </g>
     </svg>`;
 
-  // Function to download SVG
+  /**
+   * Downloads the Notelo logo as an SVG file with embedded background
+   */
   const downloadLogo = async () => {
     try {
       const base64Image = await getImageBase64('/notelo-logo.png');
@@ -87,6 +106,9 @@ export default function MockupGenerator() {
     }
   };
 
+  /**
+   * Captures and downloads the current mockup as a PNG image
+   */
   const downloadMockup = async () => {
     if (mockupRef.current) {
       const canvas = await html2canvas(mockupRef.current, {
@@ -100,6 +122,9 @@ export default function MockupGenerator() {
     }
   };
 
+  /**
+   * Returns appropriate CSS class for selected background format
+   */
   const getBackgroundClass = () => {
     switch (format) {
       case 'transparent':
@@ -111,6 +136,10 @@ export default function MockupGenerator() {
     }
   };
 
+  /**
+   * Renders the content for the selected mockup type
+   * Each case represents a different page/section of the app
+   */
   const renderMockupContent = () => {
     switch (selectedMockup) {
       case 'hero':
@@ -588,13 +617,13 @@ export default function MockupGenerator() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-[1920px] mx-auto space-y-8">
-        {/* Header */}
+        {/* Page header with title and description */}
         <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold text-gray-900">Notelo Marketing Assets</h1>
           <p className="text-gray-600">Generate high-quality mockups for different pages and formats</p>
         </div>
 
-        {/* Logo Downloads Section */}
+        {/* Logo download section with embedded background option */}
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
           <h2 className="text-xl font-semibold text-gray-900">Logo Downloads</h2>
           <div className="flex flex-wrap gap-4">
@@ -610,7 +639,7 @@ export default function MockupGenerator() {
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Control panel for selecting mockup type and format options */}
         <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
           <div className="flex justify-between items-center">
             <div className="space-y-2">
@@ -705,7 +734,7 @@ export default function MockupGenerator() {
           </div>
         </div>
 
-        {/* Mockup Preview */}
+        {/* Live preview area that captures mockup for download */}
         <div
           ref={mockupRef}
           className={`${getBackgroundClass()} p-12 rounded-2xl transition-colors duration-300`}

@@ -6,6 +6,13 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase-client';
 import { toast } from 'react-hot-toast';
 
+// Add global type declaration for Reddit tracking
+declare global {
+  interface Window {
+    trackRedditConversion?: (event: string, email?: string, conversionId?: string) => void;
+  }
+}
+
 interface OnboardingData {
   fullName: string;
   studyHours: number;
@@ -242,6 +249,33 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
       if (verifyError || !profile) {
         throw new Error('Failed to verify profile update');
+      }
+
+      // Generate a unique conversion ID for onboarding completion
+      const onboardingConversionId = `onboarding_${user?.id}_${Date.now()}`;
+      
+      // Track Reddit conversion client-side
+      if (typeof window !== 'undefined' && window.trackRedditConversion) {
+        window.trackRedditConversion('onboarding_completed', user?.email, onboardingConversionId);
+        console.log('Reddit conversion tracked client-side for onboarding with ID:', onboardingConversionId);
+      }
+      
+      // Also send to server for server-side tracking
+      try {
+        await fetch('/api/users/onboarding/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user?.id,
+            email: user?.email,
+            conversionId: onboardingConversionId
+          }),
+        });
+      } catch (serverError) {
+        // If server-side tracking fails, we still have client-side tracking
+        console.warn('Server-side conversion tracking failed:', serverError);
       }
 
       onComplete?.(); // Call onComplete if provided
@@ -664,9 +698,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="w-full max-w-xl"
         >
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 max-h-[80vh] flex flex-col">
             {/* Enhanced progress indicator */}
-            <div className="p-8 pb-0">
+            <div className="p-8 pb-0 flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <motion.div 
                   className="flex items-center gap-3"
@@ -717,7 +751,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             </div>
 
             {/* Step content with enhanced animations */}
-            <div className="p-8">
+            <div className="p-8 overflow-y-auto flex-grow">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStep}

@@ -1,3 +1,6 @@
+// Upgrade page
+// Because I don't wanna spend 6 months on an assigment and not get paid :)
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -16,10 +19,17 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+/**
+ * Upgrade page component that showcases Pro plan features and pricing
+ * Handles user authentication flow for upgrading to premium subscription
+ */
 export default function Upgrade() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  /**
+   * Handles upgrade button click - redirects to payment or login based on auth status
+   */
   const handleUpgradeClick = () => {
     if (!user) {
       navigate('/login?redirect=/payment');
@@ -28,6 +38,9 @@ export default function Upgrade() {
     }
   };
 
+  /**
+   * Pro plan features list with icons and descriptions
+   */
   const features = [
     {
       icon: <Infinity className="w-5 h-5" />,
@@ -63,7 +76,7 @@ export default function Upgrade() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-violet-50 py-20 px-4 sm:px-6 lg:px-8">
-      {/* Early Access Banner */}
+      {/* Early access promotional banner with discount offer */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -84,7 +97,7 @@ export default function Upgrade() {
       </motion.div>
 
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* Main page header with title and description */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -101,7 +114,7 @@ export default function Upgrade() {
           </p>
         </motion.div>
 
-        {/* Pricing Card */}
+        {/* Featured pricing card with Pro plan details and CTA */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -140,7 +153,7 @@ export default function Upgrade() {
           </div>
         </motion.div>
 
-        {/* Features Grid */}
+        {/* Grid layout showcasing all Pro plan features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {features.map((feature, index) => (
             <motion.div
@@ -163,7 +176,7 @@ export default function Upgrade() {
           ))}
         </div>
 
-        {/* Bottom CTA */}
+        {/* Bottom call-to-action section with support contact and guarantee */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -172,7 +185,7 @@ export default function Upgrade() {
         >
           <p className="text-gray-600 mb-6">
             Questions? We're here to help!{' '}
-            <a href="mailto:support@notelo-ai.com" className="text-primary hover:underline">
+            <a href="mailto:support@notelo-ai.com" className="text-primary hover:underline"> {/* MIGHTDO: Add support email (works sometimes) */}
               Contact support
             </a>
           </p>

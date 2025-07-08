@@ -1,3 +1,11 @@
+<!-- Main HTML file for Notelo AI
+  It includes all the necessary meta tags, links, and scripts for the website.
+  - Reddit pixel and Meta pixel code for tracking conversions.
+  - Structured data for the website.
+  - Organization schema for the website.
+  - Meta tags for the website.
+  -->
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -31,7 +39,7 @@
     <meta property="twitter:description" content="Transform any study material into easy-to-understand summaries, flashcards, quizzes and audio noteswith Notelo AI. Perfect for students with ADHD or anyone looking to study smarter, not harder." />
     <meta property="twitter:image" content="https://notelo-ai.com/images/og-image.png" />
 
-    <!-- Structured Data -->
+    <!-- Structured Data (SEO) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -120,6 +128,48 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
+    <!-- Reddit Pixel -->
+    <script>
+    !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
+    
+    // Initialize Reddit with JWT for authenticated tracking
+    rdt('init', 'a2_gfgsrrd4ug2t', {
+      aaid: 'a2_gfgsrrd4ug2t',
+      email: '',
+      externalId: '',
+      idfa: '',
+      optOut: false,
+      jwtToken: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IlNIQTI1NjpzS3dsMnlsV0VtMjVmcXhwTU40cWY4MXE2OWFFdWFyMnpLMUdhVGxjdWNZIiwidHlwIjoiSldUIn0.eyJzdWIiOiJ1c2VyIiwiZXhwIjo0OTAxMTc5NTI5LjQ5OTExOSwiaWF0IjoxNzQ1NDE5NTI5LjQ5OTExOSwianRpIjoiYjYyZk1MM2NSOFhiVWJVZjFhamtDWG9ieVBZTXh3IiwiY2lkIjoiMVExRU96VFBXbll2ZXJocHR2Z1dzUSIsImxpZCI6InQyXzFuczFwMnA5aTMiLCJhaWQiOiJ0Ml8xbnMxcDJwOWkzIiwibGNhIjoxNzQ1MjQyMjc3MTA2LCJzY3AiOiJlSnlLVmtwTUtVN096eXRMTFNyT3pNOHJWb29GQkFBQV9fOUJGZ2J1IiwiZmxvIjoxMCwibGwiOnRydWV9.QD5lxVCrGdr5seOYLQ7R5ESjZnpZvIwp5HPfH7hYvRTjxpkL75sNLg2bOK_J4QD-fB3RuqXmA1U8veUPIeSmgnXX59vSge9an6lWAfK40U_-s8A8GG6FNrysaeU3I-K4dgsBr6v6foSII-yyQQqj7rqfEnypb2Dl5PKUTddj_Q2wBAGOPzQbIovYGP5-9ppmZV0GLT7sqvngbpnQspoqC27fhBP54SO-fDxPURmMc0qKHeRzciD8LCeDtklTFsUdYNrs0qT5kCA5dRshNKZfHkULErZGE6u4xCjmM6lnUxaVZ4N0a8dj_IL8xN3Au-XOhsYX-VgBx0ZwPduiqbAJ5A'
+    });
+    
+    rdt('track', 'PageVisit');
+    
+    // Make Reddit conversion tracking available globally
+    window.trackRedditConversion = function(event, email, conversionId) {
+      if (window.rdt) {
+        const options = {};
+        
+        // Add email if provided
+        if (email) {
+          options.email = email;
+        }
+        
+        // Add conversion ID if provided
+        if (conversionId) {
+          options.conversion_id = conversionId;
+        } else {
+          // Generate a random conversion ID if none provided
+          options.conversion_id = 'notelo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+        }
+        
+        window.rdt('track', event, options);
+        console.log('Reddit conversion tracked:', event, 'with ID:', options.conversion_id);
+      }
+    };
+    </script>
+    <!-- End Reddit Pixel -->
+
+    <!-- Meta is annoying, gave up trying to get it working but here it is -->
     <!-- Meta Pixel Code -->
     <script>
     !function(f,b,e,v,n,t,s)

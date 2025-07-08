@@ -13,6 +13,12 @@ import { supabase, signInWithGoogle } from '../../lib/supabase-client';
 import { validateEmail, validatePassword } from '../../utils/validation';
 import PageLayout from '../../components/layout/PageLayout';
 
+declare global {
+  interface Window {
+    trackRedditConversion?: (event: string, email?: string, conversionId?: string) => void;
+  }
+}
+
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -124,6 +130,33 @@ export default function Signup() {
 
       if (verifyError || !profile) {
         throw new Error('Failed to verify profile creation');
+      }
+
+      // Generate a unique conversion ID for signup
+      const conversionId = `signup_${authData.user.id}_${Date.now()}`;
+      
+      // Track Reddit conversion client-side
+      if (typeof window.trackRedditConversion === 'function') {
+        window.trackRedditConversion('signup', email, conversionId);
+        console.log('Reddit conversion tracked client-side for signup with ID:', conversionId);
+      }
+      
+      // Also send to server for server-side tracking
+      try {
+        await fetch('/api/users/registration/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: authData.user.id,
+            email,
+            conversionId
+          }),
+        });
+      } catch (serverError) {
+        // If server-side tracking fails, we still have client-side tracking
+        console.warn('Server-side conversion tracking failed:', serverError);
       }
 
       toast.success('Account created successfully!');

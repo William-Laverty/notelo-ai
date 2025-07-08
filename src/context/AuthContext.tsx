@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase-client';
 import { Session, User, AuthError } from '@supabase/supabase-js';
 
+// Add global type declaration for Reddit conversion tracking
+declare global {
+  interface Window {
+    trackRedditConversion?: (event: string, email?: string, conversionId?: string) => void;
+  }
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -107,6 +114,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Facebook Pixel tracking error:', error);
+    }
+
+    // Track signup completion with Reddit conversion
+    try {
+      if (typeof window !== 'undefined' && window.trackRedditConversion) {
+        console.log('Tracking Reddit conversion event...');
+        
+        // Generate a unique conversion ID with user ID for better tracking
+        const signupConversionId = `signup_${authData.user.id}_${Date.now()}`;
+        window.trackRedditConversion('signup', email, signupConversionId);
+        
+        console.log('Reddit conversion event tracked successfully with ID:', signupConversionId);
+      } else {
+        console.warn('Reddit conversion not available for tracking');
+      }
+    } catch (error) {
+      console.error('Reddit conversion tracking error:', error);
     }
 
     return authData;
