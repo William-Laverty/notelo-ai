@@ -1,3 +1,5 @@
+// The hero section was generated with the help of AI to fine tune aniamtions aswell as layout
+
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -12,10 +14,10 @@ import { generateDemoSummary } from '../lib/ai-service';
 import { toast } from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 
-// Lazy load TypeAnimation component to reduce initial load time
+// Lazy load TypeAnimation 
 const TypeAnimation = lazy(() => import('react-type-animation').then(mod => ({ default: mod.TypeAnimation })));
 
-// Define props interface for the Demo component
+// props interface for the Demo component
 interface DemoProps {
   url: string;
   setUrl: React.Dispatch<React.SetStateAction<string>>;
@@ -34,7 +36,7 @@ export default function Hero() {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'cards' | 'audio'>('chat');
 
-  // Use useCallback for event handlers to prevent unnecessary re-renders
+  // useCallback
   const checkMobile = useCallback(() => {
     setIsMobile(window.innerWidth < 768); 
   }, []);
@@ -60,7 +62,7 @@ export default function Hero() {
     }
   }, [handleScroll, isMobile]);
 
-  // Memoize gradient styles to prevent recalculation on every render
+  // gradient styles
   const gradientStyle = useMemo(() => {
     if (isMobile) return {};
     return {
@@ -69,7 +71,7 @@ export default function Hero() {
     };
   }, [isMobile, scrollProgress]);
 
-  // Conditionally use animations only for desktop
+  // animations desktop only
   const floatingAnimation = useMemo(() => {
     if (isMobile) return {};
     return {
@@ -192,15 +194,27 @@ export default function Hero() {
       // Generate summary from the extracted content
       const result = await generateDemoSummary(extractedContent);
       
-      const cleanResult = result
-        .replace(/[#*`]|:\w+:|^Overview|^Title|^Summary|🎯.*?Overview/g, '')
-        .replace(/\n+/g, ' ')
-        .trim();
+      // Not used as i fixed to not use fallback summary
+      let cleanResult;
+      if (result.includes('📋 Content Summary') || result.includes('📊') || result.includes('🔧')) {
+        cleanResult = result
+          .replace(/^#+ /gm, '')  // Remove markdown headers
+          .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove bold formatting
+          .replace(/\n+/g, ' ')
+          .trim();
+      } else {
+        cleanResult = result
+          .replace(/[#*`]|:\w+:|^Overview|^Title|^Summary|🎯.*?Overview/g, '')
+          .replace(/\n+/g, ' ')
+          .trim();
+      }
       const words = cleanResult.split(/\s+/);
       const visiblePart = words.slice(0, 50).join(' ') + '...';
       setSummary(visiblePart);
-    } catch (error) {
-      toast.error('Failed to process URL. Please try a different one.');
+    } catch (error: any) {
+      console.error('Demo error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process URL. Please try a different one.';
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

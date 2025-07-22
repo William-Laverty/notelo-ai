@@ -143,7 +143,8 @@ export default function ContentViewer() {
       toast.success('Quiz generated successfully!');
     } catch (error) {
       console.error('Error generating quiz:', error);
-      toast.error('Failed to generate quiz. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate quiz. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -178,7 +179,8 @@ export default function ContentViewer() {
       toast.success('Flashcards generated successfully!');
     } catch (error) {
       console.error('Error generating flashcards:', error);
-      toast.error('Failed to generate flashcards. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate flashcards. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingFlashcards(false);
     }

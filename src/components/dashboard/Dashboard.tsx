@@ -509,13 +509,41 @@ export default function Dashboard() {
 
     } catch (error: any) {
       console.error('Error processing URL:', error);
-      let errorMessage = error.message;
+      let errorMessage = error.message || 'An unexpected error occurred';
       
-      // Make error messages more user-friendly
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Demo summary generation failed')) {
-        errorMessage = 'Unable to access the webpage. The site might be blocking access or require authentication.';
-      } else if (errorMessage.includes('Could not find meaningful content')) {
-        errorMessage = 'Could not find article content. Try using a direct link to an article page.';
+      // Check if this is an AI service overload/rate limit error
+      if (errorMessage.includes('📊 Our AI service is experiencing high demand') || 
+          errorMessage.includes('🔧 The AI service is temporarily overloaded') ||
+          errorMessage.includes('experiencing high demand') ||
+          errorMessage.includes('temporarily overloaded') ||
+          errorMessage.includes('temporarily busy')) {
+        // Show user-friendly message and don't create any document
+        toast.error(errorMessage, { 
+          id: toastId,
+          duration: 8000,
+          style: {
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            color: '#92400e'
+          }
+        });
+        return;
+      }
+      
+      // The enhanced error handling in ai-service.ts and content-extractor.ts already provides user-friendly messages
+      // If the error contains fallback content (content extraction fallback), extract and use it
+      if (errorMessage.includes('📋 Content Summary')) {
+        // This is a content extraction fallback, treat it as a partial success
+        try {
+          await processContent(errorMessage, new URL(url).hostname, 'url' as const);
+          toast.success('Processed with basic content extraction. Some content may be limited.', { id: toastId });
+          setIsUrlDialogOpen(false);
+          return;
+        } catch (processError) {
+          console.error('Error processing fallback content:', processError);
+          toast.error('Unable to process this URL. Please try copying the content manually.', { id: toastId });
+          return;
+        }
       }
       
       toast.error(errorMessage, { id: toastId });
@@ -553,12 +581,35 @@ export default function Dashboard() {
         setProcessingProgress(75);
       } catch (error) {
         console.error('Error generating summary:', error);
-        if (error instanceof Error && error.message.includes('429')) {
-          toast.error(
-            'API quota exceeded. A basic summary has been generated. You can try generating an enhanced summary later.',
-            { duration: 6000 }
-          );
-          summary = await generateSummary(content); // This will use the fallback
+        if (error instanceof Error) {
+          // Check if this is an AI service overload/rate limit error
+          if (error.message.includes('📊 Our AI service is experiencing high demand') || 
+              error.message.includes('🔧 The AI service is temporarily overloaded') ||
+              error.message.includes('experiencing high demand') ||
+              error.message.includes('temporarily overloaded') ||
+              error.message.includes('temporarily busy')) {
+            // Show user-friendly message and don't create any document
+            toast.error(error.message, { 
+              duration: 8000,
+              style: {
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                color: '#92400e'
+              }
+            });
+            throw error;
+          }
+          
+          // Check if this is a user-friendly error message that includes a fallback summary
+          if (error.message.includes('📊') || error.message.includes('🔧')) {
+            // The error message contains a fallback summary, use it
+            summary = error.message;
+            toast.success('Basic summary generated. You can try again later for an enhanced version.', { duration: 6000 });
+          } else {
+            // Show the user-friendly error message
+            toast.error(error.message, { duration: 6000 });
+            throw error;
+          }
         } else {
           toast.error('Failed to generate summary. Please try again later.');
           throw error;

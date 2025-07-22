@@ -1,12 +1,10 @@
 import { YoutubeTranscript } from 'youtube-transcript';
 import * as pdfjsLib from 'pdfjs-dist';
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 import pThrottle from 'p-throttle';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // Rate limit to 5 requests per minute
 const throttle = pThrottle({
@@ -54,19 +52,65 @@ interface PDFMetadata {
   metadata?: any;
 }
 
+// Enhanced error handling for content extraction with user-friendly messages
+const handleExtractionError = (error: any, url: string): Error => {
+  const errorMessage = (error?.message || '').toLowerCase();
+  
+  // Network/CORS errors
+  if (errorMessage.includes('cors') || errorMessage.includes('blocked') || 
+      errorMessage.includes('failed to fetch') || errorMessage.includes('network')) {
+    return new Error(`Unable to access the webpage. The site might be blocking automated requests or there could be a network issue. Try copying the content manually or using a different URL.`);
+  }
+  
+  // Content not found errors
+  if (errorMessage.includes('no content found') || errorMessage.includes('too short') ||
+      errorMessage.includes('no meaningful content')) {
+    return new Error(`Could not find article content on this page. This might be a homepage, login page, or the content is dynamically loaded. Try using a direct link to an article or blog post.`);
+  }
+  
+  // Authentication/access errors
+  if (errorMessage.includes('401') || errorMessage.includes('403') || 
+      errorMessage.includes('unauthorized') || errorMessage.includes('forbidden')) {
+    return new Error(`This content requires authentication or is not publicly accessible. Please try a different URL or copy the content manually.`);
+  }
+  
+  // Server errors
+  if (errorMessage.includes('500') || errorMessage.includes('502') || 
+      errorMessage.includes('503') || errorMessage.includes('server error')) {
+    return new Error(`The website is experiencing server issues. Please try again later or use a different source.`);
+  }
+  
+  // Timeout errors
+  if (errorMessage.includes('timeout') || errorMessage.includes('took too long')) {
+    return new Error(`The request took too long to complete. The website might be slow or overloaded. Please try again.`);
+  }
+  
+  // Default error message
+  return new Error(`Unable to extract content from this webpage. This could be due to the website's security settings, dynamic content loading, or other technical restrictions. Try copying the content manually.`);
+};
+
 async function extractUrlContent(url: string): Promise<string> {
   try {
     // Try with allorigins first
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
     const html = await response.text();
     
-    // Create a DOM using jsdom
-    const dom = new JSDOM(html);
-    const doc = dom.window.document;
+    if (!html || html.trim().length === 0) {
+      throw new Error('No content found - empty response');
+    }
+    
+    // Create a DOM using DOMParser (browser-compatible)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
     
     // Remove unwanted elements
-    doc.querySelectorAll('script, style, nav, header, footer, .navigation, .menu, .sidebar, iframe').forEach(el => el.remove());
+    doc.querySelectorAll('script, style, nav, header, footer, .navigation, .menu, .sidebar, iframe').forEach((el: Element) => el.remove());
 
     // Initialize content array
     const contentParts: string[] = [];
@@ -79,7 +123,7 @@ async function extractUrlContent(url: string): Promise<string> {
 
     // Get all paragraphs and lists within main content areas
     const contentElements = doc.querySelectorAll('main p, main li, article p, article li, [role="main"] p, [role="main"] li, .content p, .content li');
-    contentElements.forEach(element => {
+    contentElements.forEach((element: Element) => {
       const text = element.textContent?.trim();
       if (text && text.length > 20) { // Only include substantial paragraphs
         contentParts.push(text);
@@ -89,7 +133,7 @@ async function extractUrlContent(url: string): Promise<string> {
     // If no content found in main areas, try getting content from all paragraphs
     if (contentParts.length <= 1) {
       const allParagraphs = doc.querySelectorAll('p');
-      allParagraphs.forEach(p => {
+      allParagraphs.forEach((p: Element) => {
         const text = p.textContent?.trim();
         if (text && text.length > 20) {
           contentParts.push(text);
@@ -112,35 +156,49 @@ async function extractUrlContent(url: string): Promise<string> {
       .replace(/\n\s*\n/g, '\n\n')
       .trim();
 
-    if (!content) {
-      throw new Error('No content found');
+    // Check if we have meaningful content
+    if (!content || content.length < 100) {
+      throw new Error('No meaningful content found - content too short');
     }
 
     return content;
 
   } catch (error) {
+    console.error('Primary extraction failed:', error);
+    
     // Try alternative proxy if first one fails
     try {
       const altProxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
       const response = await fetch(altProxyUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const html = await response.text();
       
-      const dom = new JSDOM(html);
-      const doc = dom.window.document;
+      if (!html || html.trim().length === 0) {
+        throw new Error('No content found - empty response from alternative proxy');
+      }
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
       
       // Remove unwanted elements
-      doc.querySelectorAll('script, style, nav, header, footer').forEach(el => el.remove());
+      doc.querySelectorAll('script, style, nav, header, footer').forEach((el: Element) => el.remove());
       
       // Get text content from body
       const content = doc.body.textContent?.trim();
       
-      if (!content) {
-        throw new Error('No content found');
+      if (!content || content.length < 100) {
+        throw new Error('No meaningful content found - content too short');
       }
       
       return content;
     } catch (altError) {
-      throw new Error(`Failed to extract content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Alternative extraction also failed:', altError);
+      // Throw the most informative error
+      throw handleExtractionError(error, url);
     }
   }
 }
@@ -306,83 +364,119 @@ export async function extractContent(url: string, contentType: 'pdf' | 'video' |
         // Extract YouTube video ID and metadata
         const videoId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/watch\?.+&v=))([^"&?\/\s]{11})/)?.[1];
         if (!videoId) {
-          throw new Error('Invalid YouTube URL');
+          throw new Error('Invalid YouTube URL - please check the URL format');
         }
 
         // Fetch video metadata
         const videoInfoUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
         try {
           const response = await fetch(videoInfoUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch video metadata: ${response.status}`);
+          }
           const videoInfo = await response.json();
           metadata = `Title: ${videoInfo.title}\nAuthor: ${videoInfo.author_name}\nSource: ${url}\n\n`;
         } catch (error) {
           console.warn('Failed to fetch video metadata:', error);
+          metadata = `Source: ${url}\n\n`;
         }
         
         // Get transcript with timestamps
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-        const formattedTranscript = transcript
-          .map((part: TranscriptPart) => {
-            const timestamp = Math.floor(part.offset / 1000);
-            const minutes = Math.floor(timestamp / 60);
-            const seconds = timestamp % 60;
-            return `[${minutes}:${seconds.toString().padStart(2, '0')}] ${part.text}`;
-          })
-          .join('\n');
+        try {
+          const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+          const formattedTranscript = transcript
+            .map((part: TranscriptPart) => {
+              const timestamp = Math.floor(part.offset / 1000);
+              const minutes = Math.floor(timestamp / 60);
+              const seconds = timestamp % 60;
+              return `[${minutes}:${seconds.toString().padStart(2, '0')}] ${part.text}`;
+            })
+            .join('\n');
 
-        extractedContent = metadata + formattedTranscript;
+          extractedContent = metadata + formattedTranscript;
+        } catch (transcriptError) {
+          throw new Error('Unable to extract transcript from this video. The video might not have captions available, be private, or restricted in your region.');
+        }
         break;
       }
 
       case 'pdf': {
-        // Load and parse PDF with metadata
-        const pdfData = await fetch(url).then(res => res.arrayBuffer());
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        
-        // Extract PDF metadata
-        const metadata = await pdf.getMetadata().catch(() => ({} as PDFMetadata));
-        if (metadata?.info) {
-          const info = metadata.info as PDFMetadata['info'];
-          const metadataStr = [
-            info?.Title && `Title: ${info.Title}`,
-            info?.Author && `Author: ${info.Author}`,
-            info?.CreationDate && `Date: ${info.CreationDate}`,
-            `Source: ${url}`
-          ].filter(Boolean).join('\n');
-          extractedContent = metadataStr + '\n\n';
-        }
-
-        // Extract text content with page numbers
-        let text = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
+        try {
+          // Load and parse PDF with metadata
+          const pdfData = await fetch(url).then(res => {
+            if (!res.ok) {
+              throw new Error(`Failed to download PDF: ${res.status} ${res.statusText}`);
+            }
+            return res.arrayBuffer();
+          });
           
-          // Process each text item with its position
-          const pageItems = content.items
-            .filter((item: any) => typeof item.str === 'string' && item.str.trim())
-            .map((item: any) => ({
-              text: item.str,
-              x: Math.round(item.transform[4]),
-              y: Math.round(item.transform[5])
-            }))
-            .sort((a: any, b: any) => b.y - a.y || a.x - b.x) // Sort by vertical position, then horizontal
-            .map((item: any) => item.text);
+          const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+          
+          // Extract PDF metadata
+          const metadata = await pdf.getMetadata().catch(() => ({} as PDFMetadata));
+          if (metadata?.info) {
+            const info = metadata.info as PDFMetadata['info'];
+            const metadataStr = [
+              info?.Title && `Title: ${info.Title}`,
+              info?.Author && `Author: ${info.Author}`,
+              info?.CreationDate && `Date: ${info.CreationDate}`,
+              `Source: ${url}`
+            ].filter(Boolean).join('\n');
+            extractedContent = metadataStr + '\n\n';
+          }
 
-          // Join items and add page marker
-          text += `\n[Page ${i}]\n${pageItems.join(' ')}\n`;
+          // Extract text content with page numbers
+          let text = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            
+            // Process each text item with its position
+            const pageItems = content.items
+              .filter((item: any) => typeof item.str === 'string' && item.str.trim())
+              .map((item: any) => ({
+                text: item.str,
+                x: Math.round(item.transform[4]),
+                y: Math.round(item.transform[5])
+              }))
+              .sort((a: any, b: any) => b.y - a.y || a.x - b.x) // Sort by vertical position, then horizontal
+              .map((item: any) => item.text);
+
+            // Join items and add page marker
+            text += `\n[Page ${i}]\n${pageItems.join(' ')}\n`;
+          }
+          extractedContent += text.trim();
+          
+          if (!extractedContent || extractedContent.length < 200) {
+            throw new Error('PDF appears to be empty or contains only images/scanned content that cannot be extracted as text');
+          }
+        } catch (pdfError) {
+          if (pdfError instanceof Error) {
+            if (pdfError.message.includes('Invalid PDF')) {
+              throw new Error('The file is not a valid PDF or is corrupted. Please try a different file.');
+            } else if (pdfError.message.includes('password') || pdfError.message.includes('encrypted')) {
+              throw new Error('This PDF is password-protected or encrypted. Please provide an unprotected version.');
+            } else if (pdfError.message.includes('download')) {
+              throw new Error('Unable to download the PDF file. Check the URL and try again.');
+            }
+          }
+          throw new Error(`Failed to extract content from PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`);
         }
-        extractedContent += text.trim();
         break;
       }
 
       case 'url': {
-        extractedContent = await extractUrlContent(url);
+        try {
+          extractedContent = await extractUrlContent(url);
+        } catch (urlError) {
+          // The extractUrlContent function already handles user-friendly errors
+          throw urlError;
+        }
         break;
       }
 
       default:
-        throw new Error('Unsupported content type');
+        throw new Error('Unsupported content type. Please use a valid PDF, YouTube URL, or webpage URL.');
     }
 
     // Clean up the extracted content
@@ -392,16 +486,29 @@ export async function extractContent(url: string, contentType: 'pdf' | 'video' |
       .replace(/\[object Object\]/g, '') // Remove [object Object] artifacts
       .trim();
 
-    // If content is too short, it might indicate extraction failed
+    // Final check for content quality
     if (extractedContent.length < 100) {
-      throw new Error('Extracted content is too short - extraction may have failed');
+      throw new Error('Extracted content is too short - the source might not contain substantial text content');
     }
 
     return extractedContent;
 
   } catch (error) {
     console.error('Content extraction error:', error);
-    throw new Error(`Failed to extract content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    
+    // If it's already a user-friendly error, re-throw it
+    if (error instanceof Error && (
+      error.message.includes('Unable to') || 
+      error.message.includes('Could not find') ||
+      error.message.includes('requires authentication') ||
+      error.message.includes('Invalid YouTube URL') ||
+      error.message.includes('password-protected')
+    )) {
+      throw error;
+    }
+    
+    // For other errors, provide a generic user-friendly message
+    throw handleExtractionError(error, url);
   }
 }
 
@@ -465,11 +572,34 @@ Use clear, precise language and maintain the specificity of the original content
       `Analyze and summarize this content, focusing on extracting and preserving specific details: \n\n${content}`
     );
 
-    if (!summary) throw new Error('No summary generated');
+    if (!summary) throw new Error('AI service returned empty response');
     return summary;
 
   } catch (error) {
     console.error('Error generating summary:', error);
-    throw error instanceof Error ? error : new Error('Failed to generate summary');
+    
+    // Provide user-friendly error messages for common API issues
+    if (error instanceof Error) {
+      const errorMessage = error.message.toLowerCase();
+      
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        throw new Error('🔄 Our AI service is experiencing high demand. Please try again in a few minutes.');
+      }
+      
+      if (errorMessage.includes('503') || errorMessage.includes('server') || errorMessage.includes('unavailable') ||
+          errorMessage.includes('overload') || errorMessage.includes('busy')) {
+        throw new Error('🔧 The AI service is temporarily busy. Please try again in a moment.');
+      }
+      
+      if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        throw new Error('🌐 Connection issue with the AI service. Please check your internet connection and try again.');
+      }
+      
+      if (errorMessage.includes('empty response')) {
+        throw new Error('🤖 The AI service returned an empty response. Please try again.');
+      }
+    }
+    
+    throw new Error('🤖 Unable to generate summary at this time. Please try again or contact support if the issue persists.');
   }
 };

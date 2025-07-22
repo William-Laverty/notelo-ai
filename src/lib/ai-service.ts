@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import pThrottle from 'p-throttle';
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 export interface QuizQuestion {
   question: string;
@@ -22,9 +22,9 @@ const cache = new Map<string, {
 }>();
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_CHUNK_LENGTH = 1000; // Reduced chunk size for better quota management
+const MAX_CHUNK_LENGTH = 1000; 
 
-// Adjust rate limiting to be more aligned with Gemini's limits
+// Rate limiting Gemini
 const throttle = pThrottle({
   limit: 60,    // 60 requests
   interval: 60000  // per minute
@@ -108,10 +108,104 @@ ${importantSentences.join(' ')}
 # 🎓 Key Takeaways
 - Focus on the main points
 - Review the original content for more details
-- Consider trying again later when the API quota resets
+- Consider trying again later when the AI service is available
 `;
 
   return summary;
+};
+
+// Enhanced fallback summary for content extraction failures
+const generateContentExtractionFallback = (url: string): string => {
+  return `
+# 📋 Content Summary
+
+We encountered an issue extracting content from this webpage, but we've created a basic summary for you:
+
+## 🌐 Source Information
+- **URL**: ${url}
+- **Status**: Content extraction partially successful
+
+## 📝 What You Can Do
+- **Review the original page**: Visit the URL directly to access the full content
+- **Try again later**: The website might be temporarily unavailable or blocking automated access
+- **Copy and paste**: You can copy the content manually and paste it into Notelo for processing
+- **Alternative links**: Try finding the same content on a different website
+
+## 💡 Tips for Better Results
+- Use direct article URLs rather than homepage links
+- Ensure the website allows automated access
+- Some sites work better with specific URLs (like individual blog posts)
+
+This is a basic summary generated when our content extraction encounters issues. The original webpage may contain valuable information that wasn't captured here.
+`;
+};
+
+// Enhanced error classification and user-friendly messages
+const getErrorMessage = (error: Error): { message: string; useBasicSummary: boolean; useFallback: boolean; userFacingError: boolean } => {
+  const errorMessage = error.message.toLowerCase();
+  
+  // Rate limiting errors
+  if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+    return {
+      message: "📊 Our AI service is experiencing high demand right now. Please try again in a few minutes for an enhanced version.",
+      useBasicSummary: false,
+      useFallback: false,
+      userFacingError: true
+    };
+  }
+  
+  // Server overload errors (503, service unavailable, etc.)
+  if (errorMessage.includes('503') || errorMessage.includes('server') || errorMessage.includes('unavailable') || 
+      errorMessage.includes('overload') || errorMessage.includes('busy') || errorMessage.includes('timeout') ||
+      errorMessage.includes('googlegenaiferror') || errorMessage.includes('model is overloaded')) {
+    return {
+      message: "🔧 The AI service is temporarily overloaded due to high demand. Please try again in a few minutes when the service is less busy.",
+      useBasicSummary: false,
+      useFallback: false,
+      userFacingError: true
+    };
+  }
+  
+  // Content extraction errors
+  if (errorMessage.includes('extract') || errorMessage.includes('fetch') || errorMessage.includes('content') ||
+      errorMessage.includes('no meaningful content') || errorMessage.includes('too short')) {
+    return {
+      message: "🌐 We had trouble accessing the full content from this webpage. This might be due to the website's security settings or the content being dynamically loaded. We've created a helpful guide below.",
+      useBasicSummary: false,
+      useFallback: true,
+      userFacingError: false
+    };
+  }
+  
+  // Network/connection errors
+  if (errorMessage.includes('network') || errorMessage.includes('connection') || errorMessage.includes('cors') ||
+      errorMessage.includes('failed to fetch')) {
+    return {
+      message: "🌐 There was a connection issue accessing this content. This could be due to network problems or the website blocking automated requests. Please try again or use a direct article link.",
+      useBasicSummary: false,
+      useFallback: true,
+      userFacingError: false
+    };
+  }
+  
+  // Authentication/access errors
+  if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('unauthorized') ||
+      errorMessage.includes('forbidden') || errorMessage.includes('access denied')) {
+    return {
+      message: "🔐 This content appears to require authentication or is not publicly accessible. Please try with a different URL or copy the content manually.",
+      useBasicSummary: false,
+      useFallback: true,
+      userFacingError: false
+    };
+  }
+  
+  // Default for other errors
+  return {
+    message: "🤖 We encountered an unexpected issue while processing your content. Please try again, or contact support if the problem persists.",
+    useBasicSummary: true,
+    useFallback: false,
+    userFacingError: false
+  };
 };
 
 // Add request tracking
@@ -184,7 +278,7 @@ export const generateSummary = async (content: string): Promise<string> => {
     // Track this request
     trackRequest();
 
-    // If we're approaching the rate limit, add a small delay
+    // Rate limit, add delay
     if (requestsInLastMinute > 50) {  // 50 is a safe threshold
       const delay = Math.floor(Math.random() * 1000) + 500;  // Random delay between 500-1500ms
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -245,8 +339,15 @@ Keep the tone engaging and conversational while maintaining academic rigor. Use 
 
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message.includes('429')) {
-          console.log('Rate limit reached, using fallback summary generation');
+        const { useBasicSummary, userFacingError } = getErrorMessage(error);
+        
+        // For user-facing errors (overload, rate limits) us UI
+        if (userFacingError) {
+          throw error;
+        }
+        
+        if (useBasicSummary) {
+          console.log('Using fallback summary generation due to API error');
           return generateBasicSummary(content);
         }
       }
@@ -255,10 +356,22 @@ Keep the tone engaging and conversational while maintaining academic rigor. Use 
 
   } catch (error) {
     console.error('Error generating summary:', error);
-    if (error instanceof Error && error.message.includes('429')) {
-      throw new Error('Rate limit reached. Please try again in a few seconds.');
+    if (error instanceof Error) {
+      const { message, useBasicSummary, userFacingError } = getErrorMessage(error);
+      
+      // UI
+      if (userFacingError) {
+        throw new Error(message);
+      }
+      
+      if (useBasicSummary) {
+        // UI
+        const basicSummary = generateBasicSummary(content);
+        return `${message}\n\n${basicSummary}`;
+      }
+      throw new Error(message);
     }
-    throw error instanceof Error ? error : new Error('Failed to generate summary');
+    throw new Error('We encountered an unexpected issue while generating your summary. Please try again.');
   }
 };
 
@@ -292,7 +405,7 @@ Where correctAnswer is the 0-based index of the correct option.`;
     
     if (!quizText) throw new Error('Invalid response from API');
 
-    // Clean the response to handle potential markdown formatting
+    // Markdown formatting
     const cleanedText = quizText
       .replace(/```json\s*/g, '')
       .replace(/```\s*$/g, '')
@@ -422,6 +535,52 @@ export async function generateCardDescription(content: string): Promise<string> 
   }
 }
 
-export const generateDemoSummary = async (content: string): Promise<string> => {
-  return generateSummary(content);
+// Enhanced generateDemoSummary with better error handling for URL processing
+export const generateDemoSummary = async (urlOrContent: string): Promise<string> => {
+  try {
+    // Check if it's a URL or content
+    const isUrl = urlOrContent.startsWith('http://') || urlOrContent.startsWith('https://');
+    
+    if (isUrl) {
+      // This is a URL, so we need to extract content first
+      try {
+        const { extractContent } = await import('./content-extractor');
+        const extractedContent = await extractContent(urlOrContent, 'url');
+        return await generateSummary(extractedContent);
+      } catch (extractionError) {
+        console.error('Content extraction failed:', extractionError);
+        if (extractionError instanceof Error) {
+          const { useFallback } = getErrorMessage(extractionError);
+          if (useFallback) {
+            return generateContentExtractionFallback(urlOrContent);
+          }
+        }
+        throw extractionError;
+      }
+    } else {
+      return await generateSummary(urlOrContent);
+    }
+  } catch (error) {
+    console.error('Error in generateDemoSummary:', error);
+    if (error instanceof Error) {
+      const { message, useBasicSummary, useFallback, userFacingError } = getErrorMessage(error);
+      
+      // UI
+      if (userFacingError) {
+        throw new Error(message);
+      }
+      
+      if (useFallback && urlOrContent.startsWith('http')) {
+        return generateContentExtractionFallback(urlOrContent);
+      }
+      
+      if (useBasicSummary && !urlOrContent.startsWith('http')) {
+        const basicSummary = generateBasicSummary(urlOrContent);
+        return `${message}\n\n${basicSummary}`;
+      }
+      
+      throw new Error(message);
+    }
+    throw new Error('Demo summary generation failed. Please try again or contact support.');
+  }
 };
