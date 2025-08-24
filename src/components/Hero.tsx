@@ -1,37 +1,20 @@
 // The hero section was generated with the help of AI to fine tune aniamtions aswell as layout
 
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Upload, BookOpen, Brain, Link as LinkIcon, Sparkles, ArrowRight, 
-  Clock, Zap, MessageSquare, FileText, PenTool, Youtube, FileUp, 
-  Newspaper, Podcast, BookOpenCheck, GraduationCap, Lightbulb,
-  BookMarked, ScrollText, Presentation, Blocks, Layers, Rocket,
-  Target, Award, Crown, ChevronDown, Star, Pause
+  BookOpen, Brain, Sparkles, ArrowRight, 
+  Clock, MessageSquare, FileText, Youtube, FileUp, 
+  Newspaper, Podcast, BookOpenCheck,
+  Award, Star, Pause
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { generateDemoSummary } from '../lib/ai-service';
-import { toast } from 'react-hot-toast';
-import ReactMarkdown from 'react-markdown';
 
-// Lazy load TypeAnimation 
-const TypeAnimation = lazy(() => import('react-type-animation').then(mod => ({ default: mod.TypeAnimation })));
 
-// props interface for the Demo component
-interface DemoProps {
-  url: string;
-  setUrl: React.Dispatch<React.SetStateAction<string>>;
-  isProcessing: boolean;
-  handleUrlSubmit: (e: React.FormEvent) => Promise<void>;
-  summary: string | null;
-  handleGetStarted: () => void;
-}
+
 
 export default function Hero() {
   const navigate = useNavigate();
-  const [url, setUrl] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'cards' | 'audio'>('chat');
@@ -123,239 +106,13 @@ export default function Hero() {
     navigate('/signup');
   };
 
-  const handleScrollToDemo = () => {
-    const demoSection = document.getElementById('demo-section');
-    if (demoSection) {
-      demoSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
-  const truncateToWords = (text: string, wordLimit: number) => {
-    const words = text.split(/\s+/);
-    if (words.length <= wordLimit) return text;
-    
-    const truncated = words.slice(0, wordLimit).join(' ');
-    const lastPeriodIndex = truncated.lastIndexOf('.');
-    
-    if (lastPeriodIndex > truncated.length * 0.7) {
-      return truncated.slice(0, lastPeriodIndex + 1);
-    }
-    
-    return truncated + '...';
-  };
 
-  const handleUrlSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url) {
-      toast.error('Please enter a URL');
-      return;
-    }
 
-    setIsProcessing(true);
-    try {
-      // Format URL if needed
-      let formattedUrl = url;
-      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
-        formattedUrl = 'https://' + formattedUrl;
-      }
 
-      // Use a simple browser-compatible approach to fetch content
-      const corsProxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(formattedUrl)}`;
-      const response = await fetch(corsProxy);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch URL content');
-      }
-      
-      const htmlContent = await response.text();
-      
-      // Create a simple DOM parser to extract text
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      
-      // Remove unwanted elements
-      const elementsToRemove = ['script', 'style', 'nav', 'header', 'footer'];
-      elementsToRemove.forEach(tag => {
-        doc.querySelectorAll(tag).forEach(el => el.remove());
-      });
-      
-      // Extract text content from paragraphs and headings
-      const paragraphs = Array.from(doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, article'));
-      let extractedContent = paragraphs
-        .map(p => p.textContent?.trim())
-        .filter(text => text && text.length > 10)
-        .join('\n\n');
-      
-      // If no paragraphs found, try to get content from body
-      if (!extractedContent || extractedContent.length < 100) {
-        extractedContent = doc.body.textContent || '';
-      }
-      
-      // Generate summary from the extracted content
-      const result = await generateDemoSummary(extractedContent);
-      
-      // Not used as i fixed to not use fallback summary
-      let cleanResult;
-      if (result.includes('📋 Content Summary') || result.includes('📊') || result.includes('🔧')) {
-        cleanResult = result
-          .replace(/^#+ /gm, '')  // Remove markdown headers
-          .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove bold formatting
-          .replace(/\n+/g, ' ')
-          .trim();
-      } else {
-        cleanResult = result
-          .replace(/[#*`]|:\w+:|^Overview|^Title|^Summary|🎯.*?Overview/g, '')
-          .replace(/\n+/g, ' ')
-          .trim();
-      }
-      const words = cleanResult.split(/\s+/);
-      const visiblePart = words.slice(0, 50).join(' ') + '...';
-      setSummary(visiblePart);
-    } catch (error: any) {
-      console.error('Demo error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process URL. Please try a different one.';
-      toast.error(errorMessage);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
-  // Demo section component
-  const Demo: React.FC<DemoProps> = ({ url, setUrl, isProcessing, handleUrlSubmit, summary, handleGetStarted }) => {
-    return (
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        <div className="p-4 sm:p-6">
-          {/* Header - Always visible */}
-          <div className="flex items-center gap-2 mb-2 justify-center lg:justify-start">
-            <h2 className="flex items-center gap-2 text-base sm:text-lg font-semibold">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="bg-gradient-to-r from-primary to-violet-500 text-transparent bg-clip-text">
-                Try Our Demo
-              </span>
-            </h2>
-            <div className="ml-auto flex items-center gap-1 bg-violet-100 text-violet-700 px-2 py-1 rounded-full text-[10px] font-medium">
-              <Crown className="w-3 h-3" />
-              Free Trial
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mb-4">
-            Try with any article URL. Create an account to unlock all features.
-          </p>
 
-          <AnimatePresence mode="wait">
-            {!summary ? (
-              <motion.div
-                key="input"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="text-center lg:text-left"
-              >
-                {/* URL Input Form */}
-                <form onSubmit={handleUrlSubmit} className="mb-4">
-                  <div className="relative group">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors" />
-                      <div className="h-4 w-px bg-gray-200"></div>
-                    </div>
-                    <input
-                      type="url"
-                      placeholder="Enter any article URL..."
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className="w-full pl-14 pr-3 py-3 text-sm rounded-lg border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 bg-white"
-                      disabled={isProcessing}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full mt-3 bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-primary/20 text-sm"
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Generate Summary
-                      </>
-                    )}
-                  </button>
-                </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="summary"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center lg:text-left"
-              >
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-600 leading-relaxed relative">
-                    <div className="mb-4">{summary}</div>
-                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent"></div>
-                  </div>
-                  
-                  {/* CTA Section */}
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleGetStarted}
-                      className="w-full bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-primary/20 text-sm"
-                    >
-                      Get Started Now
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center justify-center gap-1 text-[10px] text-gray-500">
-                      <Award className="w-3 h-3" />
-                      <span>Try for free - No credit card required</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Feature Cards - Always visible */}
-          <div className="grid grid-cols-2 gap-3 mt-6">
-            {[
-              { 
-                icon: FileText, 
-                title: 'Smart Summaries',
-                color: 'bg-blue-50 text-blue-600'
-              },
-              { 
-                icon: MessageSquare, 
-                title: 'Practice Quizzes',
-                color: 'bg-violet-50 text-violet-600'
-              },
-              { 
-                icon: BookOpenCheck, 
-                title: 'Flashcards',
-                color: 'bg-emerald-50 text-emerald-600'
-              },
-              { 
-                icon: Podcast, 
-                title: 'Audio Notes',
-                color: 'bg-orange-50 text-orange-600'
-              }
-            ].map((item, i) => (
-              <div
-                key={i}
-                className={`flex flex-col items-center justify-center gap-2 px-3 py-3 rounded-lg ${item.color} text-center`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{item.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
@@ -502,6 +259,24 @@ export default function Hero() {
                           >
                             Turn <span className="font-semibold text-primary">any learning material</span> into personalized summaries, flashcards, and quizzes in seconds. Perfect for students who struggle to focus.
                           </motion.p>
+
+                          {/* Desktop Stats - moved from right side */}
+                          {!isMobile && (
+                            <motion.div
+                              className="mt-8 grid grid-cols-2 gap-6 max-w-md"
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                            >
+                              <div className="text-center lg:text-left">
+                                <p className="text-4xl font-bold text-primary">75%</p>
+                                <p className="text-base text-gray-600">Study Time Saved</p>
+                              </div>
+                              <div className="text-center lg:text-left">
+                                <p className="text-4xl font-bold text-violet-600">94%</p>
+                                <p className="text-base text-gray-600">Retention Improved</p>
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
                       </div>
 
@@ -887,28 +662,164 @@ export default function Hero() {
                 </div>
               </motion.div>
 
-              {/* Demo Section - Only render when visible */}
+              {/* Desktop Interactive Feature Display */}
               <motion.div 
-                id="demo-section" 
-                className="hidden lg:block scroll-mt-24"
+                className="hidden lg:block"
                 initial={false}
                 animate={{ opacity: 1, x: 0 }}
               >
                 <motion.div
-                  className="relative mx-auto lg:mx-0 w-full max-w-xl"
+                  className="relative mx-auto lg:mx-0 w-full max-w-lg"
                   initial={false}
                   animate={{ opacity: 1, scale: 1 }}
                 >
-                  <Suspense fallback={<div className="p-8 bg-white rounded-xl border text-center">Loading demo...</div>}>
-                    <Demo 
-                      url={url}
-                      setUrl={setUrl}
-                      isProcessing={isProcessing}
-                      handleUrlSubmit={handleUrlSubmit}
-                      summary={summary}
-                      handleGetStarted={handleGetStarted}
-                    />
-                  </Suspense>
+                  {/* Desktop Interactive Demo */}
+                  <motion.div 
+                    className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
+                  >
+                    <div className="p-3 bg-gradient-to-r from-primary/10 to-violet-500/10 border-b border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                      </div>
+                      <div className="text-xs font-medium text-gray-600">Notelo AI</div>
+                    </div>
+                    
+                    {/* Desktop Tabs */}
+                    <div className="flex text-xs border-b border-gray-100">
+                      {[
+                        { id: 'chat', name: 'AI Chat', icon: MessageSquare, active: activeTab === 'chat' },
+                        { id: 'quiz', name: 'Quiz', icon: FileText, active: activeTab === 'quiz' },
+                        { id: 'cards', name: 'Cards', icon: BookOpenCheck, active: activeTab === 'cards' },
+                        { id: 'audio', name: 'Audio', icon: Podcast, active: activeTab === 'audio' }
+                      ].map((tab) => (
+                        <div 
+                          key={tab.id}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-3 transition-colors cursor-pointer hover:bg-gray-50
+                            ${tab.active ? 'text-primary font-medium border-b-2 border-primary bg-primary/5' : 'text-gray-500'}`}
+                          onClick={() => setActiveTab(tab.id as 'chat' | 'quiz' | 'cards' | 'audio')}
+                        >
+                          <tab.icon className="w-4 h-4" />
+                          {tab.name}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Desktop Tab Content */}
+                    <div className="p-5">
+                      {/* Chat Tab Content */}
+                      {activeTab === 'chat' && (
+                        <div className="space-y-3">
+                          <div className="flex items-start space-x-2">
+                            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">N</div>
+                            <div className="bg-gray-100 rounded-lg p-2 text-gray-800 text-sm">
+                              How can I help you study today?
+                            </div>
+                          </div>
+                          <div className="flex items-start space-x-2 justify-end">
+                            <div className="bg-primary/10 rounded-lg p-2 text-gray-800 text-sm">
+                              Create a summary for Cell Division
+                            </div>
+                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold flex-shrink-0">U</div>
+                          </div>
+                          <div className="flex items-start space-x-2">
+                            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">N</div>
+                            <div className="bg-gray-100 rounded-lg p-2 text-gray-800">
+                              <p className="font-semibold mb-1 text-primary text-xs">✨ Cell Division Summary</p>
+                              <p className="text-xs leading-relaxed">Cell division creates new cells through mitosis and meiosis, involving phases like prophase, metaphase, anaphase...</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quiz Tab Content */}
+                      {activeTab === 'quiz' && (
+                        <div className="space-y-3">
+                          <div className="text-center">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-1">Cell Division Quiz</h3>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-gray-800 mb-3">Which phase involves sister chromatid separation?</p>
+                            <div className="space-y-2">
+                              {['Prophase', 'Metaphase', 'Anaphase', 'Telophase'].map((option, i) => (
+                                <div key={i} className={`flex items-center p-2 rounded-md text-sm cursor-pointer transition-colors ${i === 2 ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-white text-gray-700 border border-gray-200 hover:border-primary/30'}`}>
+                                  <div className={`w-4 h-4 rounded-full mr-2 flex items-center justify-center text-white text-xs font-bold ${i === 2 ? 'bg-green-600' : 'bg-gray-300'}`}>
+                                    {i === 2 ? '✓' : String.fromCharCode(65 + i)}
+                                  </div>
+                                  {option}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-primary font-medium text-xs">Question 1 of 5</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Flashcards Tab Content */}
+                      {activeTab === 'cards' && (
+                        <div className="space-y-3">
+                          <div className="text-center">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-1">Flashcards</h3>
+                          </div>
+                          <div className="bg-gradient-to-br from-blue-50 to-violet-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <div className="text-center border-b border-gray-200 pb-2 mb-3">
+                              <p className="text-xs font-semibold text-gray-700">Flashcard</p>
+                            </div>
+                            <div className="text-center mb-3">
+                              <p className="text-sm font-medium text-gray-800">What is the purpose of mitosis?</p>
+                            </div>
+                            <div className="border-t border-dashed border-gray-300 pt-3">
+                              <p className="text-xs text-gray-700 leading-relaxed">Cell division creating two identical daughter cells for growth and repair.</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <button className="px-3 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors">Previous</button>
+                            <div className="text-xs text-gray-600 font-medium">Card 1 of 10</div>
+                            <button className="px-3 py-1 text-xs text-primary bg-primary/10 rounded hover:bg-primary/20 transition-colors">Next</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Audio Tab Content */}
+                      {activeTab === 'audio' && (
+                        <div className="space-y-3">
+                          <div className="text-center">
+                            <h3 className="text-sm font-semibold text-gray-800 mb-1">Audio Summary</h3>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-4 text-center">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 mx-auto">
+                              <Podcast className="w-6 h-6 text-primary" />
+                            </div>
+                            <h4 className="text-sm font-semibold text-gray-800 mb-3">Cell Division Explained</h4>
+                            <div className="w-full bg-gray-200 h-1 rounded-full mb-3">
+                              <div className="bg-primary h-1 rounded-full w-1/3 transition-all duration-300"></div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-600 mb-3">
+                              <span>01:15</span>
+                              <div className="flex items-center">
+                                <button className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90 transition-colors">
+                                  <Pause className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <span>03:42</span>
+                            </div>
+                            <p className="text-xs text-gray-600">High-quality AI voice</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
+                      <button onClick={handleGetStarted} className="inline-flex items-center gap-1 text-sm text-primary font-semibold hover:text-primary/80 transition-colors">
+                        Try it yourself <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </motion.div>
                 </motion.div>
               </motion.div>
             </div>
